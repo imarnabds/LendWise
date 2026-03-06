@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Ashutosh Ojha",
+    "principal": 50000,
+    "rate": 3.5,
+    "calculatedBase": 1750,
+    "safeInterestComp": 1750
+  },
+  {
+    "name": "Vrishank Raina",
+    "principal": 150000,
+    "rate": 4,
+    "calculatedBase": 6000,
+    "safeInterestComp": 6000
+  },
+  {
+    "name": "Argha Saha",
+    "principal": 100000,
+    "rate": 3.5,
+    "calculatedBase": 3500,
+    "safeInterestComp": 3500
+  },
+  {
+    "name": "Abhay Sharma",
+    "principal": 150000,
+    "rate": 3,
+    "calculatedBase": 4500,
+    "safeInterestComp": 4500
+  },
+  {
+    "name": "Abhishek Mittal",
+    "principal": 50000,
+    "rate": 3.5,
+    "calculatedBase": 1750,
+    "safeInterestComp": 1750
+  },
+  {
+    "name": "Ramesh Kumar",
+    "principal": 50000,
+    "rate": 2,
+    "calculatedBase": 1000,
+    "safeInterestComp": 1000
+  }
+]

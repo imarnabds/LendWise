@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: microlend-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/microlend
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-microlend_super_secret_key_2026}
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - microlend-network
+
+  mongodb:
+    image: mongo:7
+    container_name: microlend-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - microlend-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: microlend-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - microlend-network
+
+volumes:
+  mongo-data:
+
+networks:
+  microlend-network:
+    driver: bridge

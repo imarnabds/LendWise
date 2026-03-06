@@ -1,0 +1,107 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.headerActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.exportBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chartsGrid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .chartsGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.chartCard {
+    height: 100%;
+}
+
+.chartContainer {
+    padding-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.tableContainer {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.table th {
+    padding: 1rem 1.5rem;
+    font-family: var(--font-family-heading);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background-color: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+.table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.95rem;
+    vertical-align: middle;
+}
+
+.table tr:last-child td {
+    border-bottom: none;
+}
+
+.table tr:hover td {
+    background-color: rgba(249, 250, 251, 0.5);
+}
+
+.strongCell {
+    font-weight: 500;
+    color: var(--color-text-main);
+}
+
+.amtCell {
+    font-weight: 500;
+    font-family: var(--font-family-heading);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.successBadge {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.pendingBadge {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}

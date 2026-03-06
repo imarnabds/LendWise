@@ -1,0 +1,48 @@
+--- Step 1: Login ---
+Login status: 200
+Token obtained ✅
+
+--- Step 2: Create loan ---
+Create status: 201
+Create body: {"message":"Borrower & Loan created successfully!","loan":{"lender":"69a6ffac586f6ce5ebe0b55e","borrowerName":"Test Person","borrowerPhone":"7777777777","borrowerAddress":"","principalAmount":50000,"i 
+
+--- Step 3: GET /api/loans?page=1&limit=2 ---
+Status: 200
+Has data[]: true
+Has pagination: true
+Pagination: {"currentPage":1,"totalPages":4,"totalRecords":8,"limit":2}
+First loan keys: loanId, borrowerName, borrowerPhone, principal, interestRate, status, startDate, durationMonths, emi, dueDate, monthlyInterest, totalPayable, pendingInterest, remainingBalance, id, name, amount, interest, phone
+monthlyInterest: 1500
+totalPayable: 68000
+pendingInterest: 13500
+
+--- Step 4: Dashboard ---
+Status: 200
+Body keys: totalBorrowers, totalAmountLent, monthlyInterest, pendingPayments, overdueAccounts, loanPortfolio, incomeData
+totalBorrowers: 8 | monthlyInterest: 12500 
+
+--- Step 5: Pending ---
+Status: 200
+Has pendingPayments: true
+Has pagination: true
+
+--- Step 6: Payments ---
+Status: 200
+Has payments: true
+Has pagination: true
+
+--- Step 7: Borrower History ---
+Status: 200
+Has history: true
+Has pagination: true
+
+--- Step 8: Reports ---
+Status: 200
+Body keys: revenueTrend, paymentConsistency, recentTransactions
+
+--- Step 9: Sort (principalAmount asc) ---
+Status: 200
+Principals: 25000, 50000, 50000, 50000, 50000, 50000, 50000, 75000
+Ascending order: ✅
+
+=== ALL TESTS COMPLETED ===

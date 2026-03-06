@@ -1,0 +1,117 @@
+[
+  {
+    "name": "Ramesh Kumar",
+    "principal": 50000,
+    "loan_id": "69a337feee6e07dcdcf0172a",
+    "rate": 2,
+    "interestDue": 83.33,
+    "paidThisCycle": 0,
+    "cycleStartDate": "2026-02-08T18:30:00.000Z",
+    "paymentsInCycle": [],
+    "allPayments": []
+  },
+  {
+    "name": "Abhishek Mittal",
+    "principal": 50000,
+    "loan_id": "69a34f338ea31a9ce281d208",
+    "rate": 3.5,
+    "interestDue": 145.83,
+    "paidThisCycle": 0,
+    "cycleStartDate": "2026-02-08T18:30:00.000Z",
+    "paymentsInCycle": [],
+    "allPayments": []
+  },
+  {
+    "name": "Abhay Sharma",
+    "principal": 150000,
+    "loan_id": "69a350b68ea31a9ce281d241",
+    "rate": 3,
+    "interestDue": 375,
+    "paidThisCycle": 0,
+    "cycleStartDate": "2026-02-08T18:30:00.000Z",
+    "paymentsInCycle": [],
+    "allPayments": []
+  },
+  {
+    "name": "Argha Saha",
+    "principal": 100000,
+    "loan_id": "69a351108ea31a9ce281d24b",
+    "rate": 3.5,
+    "interestDue": 291.67,
+    "paidThisCycle": 0,
+    "cycleStartDate": "2026-01-18T18:30:00.000Z",
+    "paymentsInCycle": [],
+    "allPayments": []
+  },
+  {
+    "name": "Vrishank Raina",
+    "principal": 150000,
+    "loan_id": "69a3517d8ea31a9ce281d24f",
+    "rate": 4,
+    "interestDue": 500,
+    "paidThisCycle": 3866.67,
+    "cycleStartDate": "2026-01-28T18:30:00.000Z",
+    "paymentsInCycle": [
+      {
+        "amount": 2866.67,
+        "date": "2026-03-01T00:00:00.000Z"
+      },
+      {
+        "amount": 500,
+        "date": "2026-03-01T00:00:00.000Z"
+      },
+      {
+        "amount": 500,
+        "date": "2026-03-01T00:00:00.000Z"
+      }
+    ],
+    "allPayments": [
+      2866.67,
+      500,
+      500
+    ]
+  },
+  {
+    "name": "Ashutosh Ojha",
+    "principal": 50000,
+    "loan_id": "69a43d268ea31a9ce281d2ff",
+    "rate": 3.5,
+    "interestDue": 145.83,
+    "paidThisCycle": 34029.15,
+    "cycleStartDate": "2026-01-15T18:30:00.000Z",
+    "paymentsInCycle": [
+      {
+        "amount": 145.83,
+        "date": "2026-03-01T00:00:00.000Z"
+      },
+      {
+        "amount": 145.83,
+        "date": "2026-03-01T00:00:00.000Z"
+      },
+      {
+        "amount": 33300,
+        "date": "2026-03-01T00:00:00.000Z"
+      },
+      {
+        "amount": 145.83,
+        "date": "2026-03-01T00:00:00.000Z"
+      },
+      {
+        "amount": 145.83,
+        "date": "2026-03-01T00:00:00.000Z"
+      },
+      {
+        "amount": 145.83,
+        "date": "2026-03-01T00:00:00.000Z"
+      }
+    ],
+    "allPayments": [
+      145.83,
+      145.83,
+      33300,
+      145.83,
+      145.83,
+      145.83
+    ]
+  }
+]

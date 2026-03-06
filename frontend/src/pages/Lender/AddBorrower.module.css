@@ -1,0 +1,176 @@
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.formContainer {
+    margin-top: 1rem;
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .formGrid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+}
+
+.sectionTitle {
+    font-family: var(--font-family-heading);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.row {
+    display: flex;
+    gap: 1rem;
+}
+
+.row>* {
+    flex: 1;
+}
+
+.emiCalcBox {
+    background-color: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+}
+
+.emiDetails {
+    display: flex;
+    flex-direction: column;
+}
+
+.emiLabel {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin: 0;
+}
+
+.emiValue {
+    font-family: var(--font-family-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary-dark);
+    margin: 0;
+}
+
+.calcContainer {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.calcGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-width: 200px;
+    background-color: var(--color-background);
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+}
+
+.calcResult {
+    display: flex;
+    flex-direction: column;
+    margin-top: 0.5rem;
+}
+
+.sectionFull {
+    margin-bottom: 2rem;
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+}
+
+.label {
+    font-family: var(--font-family-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-main);
+    margin-bottom: 0.5rem;
+}
+
+.textarea {
+    font-family: inherit;
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-text-main);
+    transition: var(--transition-normal);
+    outline: none;
+    width: 100%;
+    resize: vertical;
+}
+
+.textarea:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(5, 223, 114, 0.15);
+}
+
+.fileUpload {
+    margin-top: 1rem;
+}
+
+.fileInput {
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.fileInput::file-selector-button {
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-text-main);
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: var(--transition-normal);
+    margin-right: 1rem;
+}
+
+.fileInput::file-selector-button:hover {
+    background-color: var(--color-accent);
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+}

@@ -1,0 +1,196 @@
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.closeBtn {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 0.4rem;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-fast);
+    z-index: 10;
+}
+
+.closeBtn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+    border-color: var(--color-error);
+}
+
+.formContainer {
+    margin-top: 1rem;
+}
+
+.row {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 640px) {
+    .row {
+        flex-direction: column;
+        gap: 0;
+    }
+}
+
+.row>* {
+    flex: 1;
+}
+
+.inputGroup {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+}
+
+.label {
+    font-family: var(--font-family-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-main);
+    margin-bottom: 0.5rem;
+}
+
+.select {
+    font-family: inherit;
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-text-main);
+    transition: var(--transition-normal);
+    outline: none;
+    width: 100%;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1em;
+}
+
+.select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(5, 223, 114, 0.15);
+}
+
+.summaryBox {
+    background-color: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.summaryItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.summaryLabel {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+.summaryValue {
+    font-family: var(--font-family-heading);
+    font-weight: 500;
+    color: var(--color-text-main);
+}
+
+.deduction {
+    color: var(--color-error);
+}
+
+.summaryDivider {
+    height: 1px;
+    background-color: var(--color-border);
+    margin: 0.5rem 0;
+}
+
+.finalBalance {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-primary-dark);
+}
+
+.optionsBox {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: rgba(5, 223, 114, 0.05);
+    /* very light primary */
+    border-radius: var(--radius-sm);
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.checkbox {
+    appearance: none;
+    background-color: var(--color-surface);
+    border: 2px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    padding: 9px;
+    border-radius: 4px;
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+}
+
+.checkbox:checked {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.checkbox:checked:after {
+    content: '\2714';
+    font-size: 12px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+}
+
+.checkboxText {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--color-text-main);
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.receiptBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}

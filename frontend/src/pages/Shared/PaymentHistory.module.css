@@ -1,0 +1,117 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.filtersContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.searchGroup {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--color-background);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    flex: 1;
+    min-width: 250px;
+}
+
+.searchInput {
+    border: none;
+    background: transparent;
+    outline: none;
+    width: 100%;
+    color: var(--color-text-main);
+    font-size: 0.95rem;
+}
+
+.filterBtns {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.tableContainer {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.table th {
+    padding: 1rem 1.5rem;
+    font-family: var(--font-family-heading);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background-color: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+.table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.95rem;
+    vertical-align: middle;
+}
+
+.table tr:last-child td {
+    border-bottom: none;
+}
+
+.table tr:hover td {
+    background-color: rgba(249, 250, 251, 0.5);
+}
+
+.strongCell {
+    font-weight: 500;
+    color: var(--color-text-main);
+}
+
+.amtCell {
+    font-weight: 500;
+    font-family: var(--font-family-heading);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.statusCompleted {
+    background-color: rgba(5, 223, 114, 0.1);
+    color: var(--color-primary-dark);
+}
+
+.statusPending {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.statusFailed {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+}
+
+.emptyState {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--color-text-muted);
+}
