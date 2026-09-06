@@ -1,97 +1,32 @@
 .container {
-    display: flex;
     min-height: 100vh;
-    background-color: var(--color-background);
-}
-
-.leftPanel {
-    flex: 1;
-    background-color: var(--color-primary-dark);
-    color: var(--color-secondary);
     display: flex;
-    flex-direction: column;
-    padding: 3rem;
+    align-items: center;
+    justify-content: center;
+    background-color: #050505;
+    background-image: radial-gradient(circle at center, #0a0a0a 0%, #000000 100%);
     position: relative;
     overflow: hidden;
-    justify-content: space-between;
+    padding: 1rem;
 }
 
-@media (max-width: 900px) {
-    .leftPanel {
-        display: none;
-    }
-}
-
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    z-index: 10;
-}
-
-.logoMark {
-    width: 48px;
-    height: 48px;
-    background-color: var(--color-secondary);
-    color: var(--color-primary-dark);
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-family-heading);
-    font-weight: 700;
-    font-size: 1.5rem;
-    box-shadow: var(--shadow-sm);
-}
-
-.brandTitle {
-    font-size: 2rem;
-    font-weight: 700;
-    letter-spacing: -1px;
-    color: var(--color-secondary);
-    margin: 0;
-}
-
-.heroContent {
-    z-index: 10;
-    max-width: 480px;
-}
-
-.heroContent h2 {
-    font-size: 2.5rem;
-    margin-bottom: 1.5rem;
-    line-height: 1.2;
-    color: var(--color-secondary);
-}
-
-.heroContent p {
-    font-size: 1.125rem;
-    opacity: 0.9;
-    line-height: 1.6;
-}
-
-.overlay {
+/* Background ambient glow */
+.container::before {
+    content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(5, 223, 114, 0.1) 0%, rgba(4, 184, 93, 0.8) 100%);
-    z-index: 1;
-}
-
-.rightPanel {
-    flex: 1;
-    max-width: 600px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    background-color: var(--color-surface);
-    border-left: 1px solid var(--color-border);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(5, 223, 114, 0.03) 0%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 0;
 }
 
 .authContainer {
     width: 100%;
-    max-width: 420px;
+    display: flex;
+    justify-content: center;
+    z-index: 10;
 }

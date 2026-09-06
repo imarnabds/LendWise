@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .glow-neon {
+    box-shadow: 0 0 15px rgba(0, 255, 156, 0.4);
+  }
+  .glow-neon-focus:focus-within {
+    box-shadow: 0 0 12px rgba(0, 255, 156, 0.3);
+  }
+  .glassmorphism {
+    background: rgba(26, 30, 29, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}

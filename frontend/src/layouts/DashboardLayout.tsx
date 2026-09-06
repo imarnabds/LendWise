@@ -30,7 +30,6 @@ export const DashboardLayout: React.FC = () => {
             'history': t('sidebar.history', 'Payment History'),
             'payment-history': t('sidebar.history', 'Payment History'),
             'reports': t('sidebar.reports', 'Reports & Analytics'),
-            'notifications': t('sidebar.notifications', 'Notifications'),
             'my-loans': t('sidebar.myLoans', 'My Loans'),
             'upcoming-dues': t('sidebar.upcomingDues', 'Upcoming Dues'),
         };

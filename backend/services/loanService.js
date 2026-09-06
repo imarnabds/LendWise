@@ -3,17 +3,26 @@
  *
  * Responsibilities:
  *  - Server-side filtering, sorting, pagination
- *  - Interest calculation (monthly, total payable, pending interest)
- *  - Dashboard aggregation
- *  - Pending payment computation
- *  - CRUD operations with validation
+ *  - Authoritative interest calculation (APR simple interest model)
+ *  - Lender & Borrower role validation (No automatic account creation or role mutation)
+ *  - Resource-level and Collection-level authorization (Actor vs Financial Parties)
+ *  - Dashboard aggregation & pending payment computation
+ *  - CRUD operations with financial immutability protections
+ *  - Event notification hooks for real-time synchronization
  */
 
+const EventEmitter = require('events');
+const mongoose = require('mongoose');
 const Loan = require('../models/Loan');
 const Payment = require('../models/Payment');
+const User = require('../models/User');
 const { validateCreateLoan, ValidationError } = require('../validators/loanValidator');
 const { getCache, setCache, invalidatePattern } = require('../config/redis');
 const logger = require('../utils/logger');
+const { roundMoney, calculateSimpleInterest } = require('../utils/money');
+
+// Event Emitter for Phase 5 real-time sync readiness
+const loanEvents = new EventEmitter();
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -32,39 +41,38 @@ const buildPaginationMeta = (totalRecords, page, limit) => {
 };
 
 /**
- * Compute interest fields for a single loan document.
+ * Compute interest fields for a single loan document using APR Simple Interest.
  * All interest logic lives HERE — the frontend receives pre-computed values.
- *
- * Business rules (flat interest model used in this project):
- *   monthlyInterest  = principal × (annualRate / 100)
- *   totalPayable     = principal + (monthlyInterest × durationMonths)
- *   pendingInterest  = (accrued interest months × monthlyInterest) − total interest payments
  */
 const computeInterestFields = (loan, totalPaidForLoan = 0) => {
-    const principal = loan.principalAmount || 0;
+    const principal = roundMoney(loan.principalAmount || 0);
     const rate = loan.interestRate || 0;
     const duration = loan.durationMonths || 1;
 
-    // Flat monthly interest (matches the existing project convention)
-    const monthlyInterest = parseFloat((principal * (rate / 100)).toFixed(2));
+    const { totalInterest, totalPayable, emi } = calculateSimpleInterest(principal, rate, duration);
 
-    // Total payable over the entire loan duration
-    const totalPayable = parseFloat((principal + monthlyInterest * duration).toFixed(2));
+    // Monthly interest portion for display
+    const monthlyInterest = roundMoney(totalInterest / duration);
 
-    // How many months have elapsed since the loan started?
+    // Accrued interest & pending interest calculations
     const now = new Date();
     const start = new Date(loan.startDate);
     let monthsElapsed = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
     if (monthsElapsed < 0) monthsElapsed = 0;
     if (monthsElapsed > duration) monthsElapsed = duration;
 
-    // Total interest accrued so far
-    const accruedInterest = parseFloat((monthlyInterest * monthsElapsed).toFixed(2));
+    const accruedInterest = roundMoney(monthlyInterest * monthsElapsed);
+    const pendingInterest = roundMoney(Math.max(0, accruedInterest - totalPaidForLoan));
 
-    // Pending interest = accrued − paid
-    const pendingInterest = parseFloat(Math.max(0, accruedInterest - totalPaidForLoan).toFixed(2));
-
-    return { monthlyInterest, totalPayable, pendingInterest };
+    return {
+        monthlyInterest,
+        totalInterest,
+        totalPayable,
+        emi: loan.emi || emi,
+        pendingInterest,
+        amountPaid: roundMoney(loan.amountPaid || 0),
+        remainingBalance: roundMoney(loan.remainingBalance !== undefined ? loan.remainingBalance : totalPayable)
+    };
 };
 
 // ────────────────────────────────────────────────────────────
@@ -73,25 +81,29 @@ const computeInterestFields = (loan, totalPaidForLoan = 0) => {
 
 /**
  * GET /api/loans
- * Paginated, filtered, sorted loan listing with computed interest fields.
+ * Collection-level authorization:
+ *  - LENDER actor retrieves loans where lenderId = actor.id
+ *  - BORROWER actor retrieves loans where borrowerId = actor.id
+ * Soft-deleted loans (deletedAt !== null) are excluded from normal queries.
  */
-const getLoans = async (lenderId, { pagination, sorting, filters }) => {
+const getLoans = async (actor, { pagination, sorting, filters }) => {
     const { page, limit } = pagination;
     const { sortBy, order } = sorting;
+    const actorId = actor.id || actor._id;
 
-    // ── Cache check (30s TTL) ────────────────────────────────
-    const cacheKey = `loans:${lenderId}:p${page}l${limit}s${sortBy}o${order}f${JSON.stringify(filters)}`;
+    // Cache key
+    const cacheKey = `loans:${actorId}:${actor.role}:p${page}l${limit}s${sortBy}o${order}f${JSON.stringify(filters)}`;
     const cached = await getCache(cacheKey);
     if (cached) return cached;
 
-    // ── Build query filter ─────────────────────────────────
-    const query = { lender: lenderId };
+    // Collection-level authorization query scope + soft-delete exclusion
+    const query = {
+        deletedAt: null,
+        ...(actor.role === 'BORROWER' ? { borrowerId: actorId } : { lenderId: actorId })
+    };
 
-    if (filters.status) {
+    if (filters.status && filters.status !== 'All') {
         query.status = filters.status;
-    } else {
-        // Default: exclude soft-deleted loans
-        query.status = { $ne: 'Deleted' };
     }
 
     if (filters.search) {
@@ -104,53 +116,61 @@ const getLoans = async (lenderId, { pagination, sorting, filters }) => {
         if (filters.endDate) query.startDate.$lte = filters.endDate;
     }
 
-    // ── Count + Fetch in parallel ──────────────────────────
     const sortObj = { [sortBy]: order === 'asc' ? 1 : -1 };
     const skip = (page - 1) * limit;
 
     const [totalRecords, loans] = await Promise.all([
         Loan.countDocuments(query),
         Loan.find(query)
-            .select('borrowerName borrowerPhone principalAmount interestRate startDate durationMonths emi dueDate status remainingBalance collateral notes createdAt')
+            .select('lenderId borrowerId borrowerName borrowerPhone principalAmount interestRate startDate durationMonths emi dueDate status totalInterest totalPayable amountPaid remainingBalance collateral notes createdAt')
+            .populate('lenderId', 'name phone email')
             .sort(sortObj)
             .skip(skip)
             .limit(limit)
             .lean()
     ]);
 
-    // ── Fetch total interest-portion payments for these loans ──
+    // Fetch total payments for these loans
     const loanIds = loans.map(l => l._id);
     const paymentAgg = await Payment.aggregate([
-        { $match: { loan: { $in: loanIds }, status: 'Completed' } },
-        { $group: { _id: '$loan', totalPaid: { $sum: '$interestPortion' } } }
+        { $match: { loanId: { $in: loanIds }, status: 'Completed' } },
+        { $group: { _id: '$loanId', totalPaid: { $sum: '$amount' }, totalInterestPaid: { $sum: '$interestPortion' } } }
     ]);
     const paidMap = {};
-    paymentAgg.forEach(p => { paidMap[p._id.toString()] = p.totalPaid; });
+    paymentAgg.forEach(p => { paidMap[p._id.toString()] = p.totalInterestPaid; });
 
-    // ── Format response ────────────────────────────────────
     const data = loans.map(loan => {
         const totalPaid = paidMap[loan._id.toString()] || 0;
-        const { monthlyInterest, totalPayable, pendingInterest } = computeInterestFields(loan, totalPaid);
+        const interestFields = computeInterestFields(loan, totalPaid);
+        const lenderObj = typeof loan.lenderId === 'object' && loan.lenderId ? loan.lenderId : null;
+        const lenderIdStr = lenderObj ? (lenderObj._id || lenderObj.id).toString() : (loan.lenderId ? loan.lenderId.toString() : '');
 
         return {
             loanId: loan._id,
+            lenderId: lenderIdStr,
+            lenderName: lenderObj ? lenderObj.name : 'Lender',
+            lenderPhone: lenderObj ? lenderObj.phone : '',
+            lenderEmail: lenderObj ? lenderObj.email : '',
+            borrowerId: loan.borrowerId,
             borrowerName: loan.borrowerName,
             borrowerPhone: loan.borrowerPhone,
-            principal: loan.principalAmount,
+            principal: roundMoney(loan.principalAmount),
             interestRate: loan.interestRate,
             status: loan.status,
-            startDate: loan.startDate.toISOString().split('T')[0],
+            startDate: loan.startDate ? loan.startDate.toISOString().split('T')[0] : '',
             durationMonths: loan.durationMonths,
-            emi: loan.emi,
+            emi: interestFields.emi,
             dueDate: loan.dueDate,
-            monthlyInterest,
-            totalPayable,
-            pendingInterest,
-            remainingBalance: loan.remainingBalance,
-            // Legacy compat fields for existing frontend
+            monthlyInterest: interestFields.monthlyInterest,
+            totalInterest: interestFields.totalInterest,
+            totalPayable: interestFields.totalPayable,
+            amountPaid: interestFields.amountPaid,
+            remainingBalance: interestFields.remainingBalance,
+            pendingInterest: interestFields.pendingInterest,
+            // Legacy compatibility fields for existing LendWise frontend
             id: loan._id,
             name: loan.borrowerName,
-            amount: loan.principalAmount,
+            amount: roundMoney(loan.principalAmount),
             interest: `${loan.interestRate}%`,
             phone: loan.borrowerPhone
         };
@@ -167,40 +187,53 @@ const getLoans = async (lenderId, { pagination, sorting, filters }) => {
 
 /**
  * GET /api/loans/dashboard
- * Aggregated statistics for the Lender Dashboard.
- * Uses MongoDB aggregation for efficiency.
+ * Aggregated statistics scoped by authenticated actor role & ID.
  */
-const getDashboardStats = async (lenderId) => {
-    // ── Cache check (60s TTL) ────────────────────────────────
-    const cacheKey = `dashboard:${lenderId}`;
+const getDashboardStats = async (actor, timeframe = 'monthly') => {
+    const actorId = actor.id || actor._id;
+    const cacheKey = `dashboard:${actorId}:${actor.role}:${timeframe}`;
     const cached = await getCache(cacheKey);
     if (cached) return cached;
 
-    const mongoose = require('mongoose');
-    const lenderObjId = new mongoose.Types.ObjectId(lenderId);
+    const actorObjId = new mongoose.Types.ObjectId(actorId);
 
-    // ── Loan stats via aggregation ─────────────────────────
+    const matchScope = {
+        deletedAt: null,
+        ...(actor.role === 'BORROWER' ? { borrowerId: actorObjId } : { lenderId: actorObjId })
+    };
+
     const loanStats = await Loan.aggregate([
-        { $match: { lender: lenderObjId, status: { $ne: 'Deleted' } } },
+        { $match: matchScope },
         {
             $group: {
                 _id: '$status',
                 count: { $sum: 1 },
                 totalPrincipal: { $sum: '$principalAmount' },
+                totalPaid: { $sum: '$amountPaid' },
+                totalRemaining: { $sum: '$remainingBalance' },
                 totalMonthlyInterest: {
-                    $sum: { $multiply: ['$principalAmount', { $divide: ['$interestRate', 100] }] }
+                    $sum: {
+                        $divide: [
+                            { $multiply: ['$principalAmount', { $divide: ['$interestRate', 100] }, { $divide: ['$durationMonths', 12] }] },
+                            '$durationMonths'
+                        ]
+                    }
                 }
             }
         }
     ]);
 
     let totalBorrowers = 0, totalAmountLent = 0, monthlyInterest = 0;
+    let totalPaid = 0, totalRemaining = 0;
     let activeLoans = 0, closedLoans = 0, overdueLoans = 0;
 
     loanStats.forEach(stat => {
+        totalAmountLent += stat.totalPrincipal;
+        totalPaid += stat.totalPaid;
+        totalRemaining += stat.totalRemaining;
+
         if (stat._id === 'Active' || stat._id === 'Overdue') {
             totalBorrowers += stat.count;
-            totalAmountLent += stat.totalPrincipal;
             monthlyInterest += stat.totalMonthlyInterest;
         }
         if (stat._id === 'Active') activeLoans = stat.count;
@@ -208,21 +241,38 @@ const getDashboardStats = async (lenderId) => {
         if (stat._id === 'Overdue') overdueLoans = stat.count;
     });
 
-    // ── Monthly income chart (last 7 months) ───────────────
-    const sevenMonthsAgo = new Date();
-    sevenMonthsAgo.setMonth(sevenMonthsAgo.getMonth() - 7);
+    // Income chart aggregation
+    const now = new Date();
+    let startDate;
+    let formatStr;
+
+    if (timeframe === 'daily') {
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 14);
+        formatStr = "%Y-%m-%d";
+    } else if (timeframe === 'weekly') {
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 56);
+        formatStr = "%Y-W%V";
+    } else if (timeframe === 'yearly') {
+        startDate = new Date();
+        startDate.setFullYear(startDate.getFullYear() - 5);
+        formatStr = "%Y";
+    } else {
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 7);
+        formatStr = "%Y-%m";
+    }
+
+    const paymentMatchScope = actor.role === 'BORROWER'
+        ? { borrowerId: actorObjId, status: 'Completed', paymentDate: { $gte: startDate } }
+        : { lenderId: actorObjId, status: 'Completed', paymentDate: { $gte: startDate } };
 
     const incomeAgg = await Payment.aggregate([
-        {
-            $match: {
-                lender: lenderObjId,
-                status: 'Completed',
-                paymentDate: { $gte: sevenMonthsAgo }
-            }
-        },
+        { $match: paymentMatchScope },
         {
             $group: {
-                _id: { $month: '$paymentDate' },
+                _id: { $dateToString: { format: formatStr, date: '$paymentDate' } },
                 income: { $sum: '$amount' }
             }
         },
@@ -230,15 +280,34 @@ const getDashboardStats = async (lenderId) => {
     ]);
 
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const incomeData = incomeAgg.map(item => ({
-        name: monthNames[item._id - 1],
-        income: item.income
-    }));
+
+    const incomeData = incomeAgg.map(item => {
+        let name = item._id;
+
+        if (timeframe === 'monthly') {
+            const [year, month] = name.split('-');
+            name = `${monthNames[parseInt(month) - 1]} '${year.substring(2)}`;
+        } else if (timeframe === 'weekly') {
+            const [year, week] = name.split('-W');
+            name = `W${week} '${year.substring(2)}`;
+        } else if (timeframe === 'daily') {
+            const [, month, day] = name.split('-');
+            name = `${parseInt(day)} ${monthNames[parseInt(month) - 1]}`;
+        }
+
+        return {
+            name,
+            income: roundMoney(item.income)
+        };
+    });
 
     const result = {
         totalBorrowers,
-        totalAmountLent,
-        monthlyInterest: parseFloat(monthlyInterest.toFixed(2)),
+        totalAmountLent: roundMoney(totalAmountLent),
+        totalPaid: roundMoney(totalPaid),
+        remainingBalance: roundMoney(totalRemaining),
+        activeLoans,
+        monthlyInterest: roundMoney(monthlyInterest),
         pendingPayments: overdueLoans,
         overdueAccounts: overdueLoans,
         loanPortfolio: [
@@ -255,28 +324,32 @@ const getDashboardStats = async (lenderId) => {
 
 /**
  * GET /api/loans/pending
- * Pending/overdue payments with server-side computation and pagination.
  */
-const getPendingPayments = async (lenderId, { pagination, filters }) => {
+const getPendingPayments = async (actor, { pagination, filters }) => {
     const { page, limit } = pagination;
+    const actorId = actor.id || actor._id;
 
-    const query = { lender: lenderId, status: { $in: ['Active', 'Overdue'] } };
+    const actorObjId = mongoose.Types.ObjectId.isValid(actorId)
+        ? new mongoose.Types.ObjectId(actorId.toString())
+        : actorId;
 
-    // Count first for pagination metadata
-    const totalActive = await Loan.countDocuments(query);
+    const query = {
+        deletedAt: null,
+        status: 'Overdue',
+        ...(actor.role === 'BORROWER' ? { borrowerId: actorObjId } : { lenderId: actorObjId })
+    };
+
     const loans = await Loan.find(query)
         .sort({ status: 1, createdAt: -1 })
         .lean();
 
-    // Fetch recent completed payments (last 45 days)
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 45);
-    const recentPayments = await Payment.find({
-        lender: lenderId,
-        status: 'Completed',
-        paymentDate: { $gte: recentDate }
-    }).lean();
+    const paymentScope = actor.role === 'BORROWER'
+        ? { borrowerId: actorObjId, status: 'Completed', paymentDate: { $gte: recentDate } }
+        : { lenderId: actorObjId, status: 'Completed', paymentDate: { $gte: recentDate } };
 
+    const recentPayments = await Payment.find(paymentScope).lean();
     const now = new Date();
 
     const pendingList = loans.map(loan => {
@@ -293,36 +366,34 @@ const getPendingPayments = async (lenderId, { pagination, filters }) => {
         let amountPaidThisCycle = 0;
         recentPayments.forEach(p => {
             const paymentTime = new Date(p.paymentDate).getTime();
-            if (p.loan.toString() === loan._id.toString() && paymentTime >= cycleStartDate.getTime()) {
+            if (p.loanId.toString() === loan._id.toString() && paymentTime >= cycleStartDate.getTime()) {
                 amountPaidThisCycle += p.amount;
             }
         });
 
-        let interestComponent = (loan.principalAmount * loan.interestRate / 100);
-        if (!interestComponent || isNaN(interestComponent)) {
-            interestComponent = loan.emi || 0;
-        }
-        const principalComponent = 0;
+        const { totalInterest, emi } = calculateSimpleInterest(loan.principalAmount, loan.interestRate, loan.durationMonths);
+        const interestComponent = roundMoney(totalInterest / (loan.durationMonths || 1)) || emi;
 
-        const safeAmountPaid = parseFloat(amountPaidThisCycle.toFixed(2));
-        const safeInterestComp = parseFloat(interestComponent.toFixed(2));
+        const safeAmountPaid = roundMoney(amountPaidThisCycle);
+        const safeInterestComp = roundMoney(interestComponent);
 
-        let severity = 'PENDING';
-        if (safeAmountPaid >= safeInterestComp) {
+        let severity = 'OVERDUE';
+
+        if (loan.remainingBalance && loan.remainingBalance <= 0) {
+            severity = 'PAID';
+        } else if (safeAmountPaid >= safeInterestComp && safeInterestComp > 0) {
             severity = 'PAID';
         } else if (safeAmountPaid > 0 && safeAmountPaid < safeInterestComp) {
             severity = 'PARTIAL';
-        } else if (lastDueDate.getTime() < now.getTime() && safeAmountPaid < safeInterestComp) {
-            severity = 'OVERDUE';
         }
 
         return {
             id: loan._id,
             name: loan.borrowerName,
             interestComponent: safeInterestComp,
-            principalComponent: parseFloat(principalComponent.toFixed(2)),
+            principalComponent: 0,
             amountPaid: safeAmountPaid,
-            amountDue: parseFloat(Math.max(0, safeInterestComp - safeAmountPaid).toFixed(2)),
+            amountDue: roundMoney(Math.max(0, safeInterestComp - safeAmountPaid)),
             dueDate: lastDueDate.toISOString().split('T')[0],
             daysLate,
             contact: loan.borrowerPhone,
@@ -334,7 +405,6 @@ const getPendingPayments = async (lenderId, { pagination, filters }) => {
         return item.status === filters.status;
     });
 
-    // Server-side pagination on the computed list
     const totalRecords = pendingList.length;
     const skip = (page - 1) * limit;
     const paginatedList = pendingList.slice(skip, skip + limit);
@@ -347,12 +417,13 @@ const getPendingPayments = async (lenderId, { pagination, filters }) => {
 
 /**
  * GET /api/loans/borrower-history
- * Last N soft-deleted borrowers with pagination.
+ * Retrieves soft-deleted/archived loans (deletedAt !== null).
  */
-const getBorrowerHistory = async (lenderId, { pagination }) => {
+const getBorrowerHistory = async (actor, { pagination }) => {
     const { page, limit } = pagination;
+    const actorId = actor.id || actor._id;
 
-    const query = { lender: lenderId, status: 'Deleted' };
+    const query = { lenderId: actorId, deletedAt: { $ne: null } };
 
     const [totalRecords, loans] = await Promise.all([
         Loan.countDocuments(query),
@@ -367,7 +438,7 @@ const getBorrowerHistory = async (lenderId, { pagination }) => {
     const history = loans.map(loan => ({
         id: loan._id,
         name: loan.borrowerName,
-        principalAmount: loan.principalAmount,
+        principalAmount: roundMoney(loan.principalAmount),
         interestRate: loan.interestRate,
         durationMonths: loan.durationMonths,
         startDate: loan.startDate.toISOString().split('T')[0],
@@ -382,20 +453,66 @@ const getBorrowerHistory = async (lenderId, { pagination }) => {
 
 /**
  * POST /api/loans — Create a new loan.
+ * Mandatory Rules:
+ *  - Validate target lenderId exists and has role === 'LENDER'
+ *  - Validate target borrowerId exists and has role === 'BORROWER'
+ *  - If borrower does NOT exist, throw 404 Not Found error (NO implicit auto-creation)
+ *  - NEVER automatically change a user's role.
+ *  - Calculate totalInterest, totalPayable, amountPaid (0), remainingBalance authoritatively.
  */
-const createLoan = async (lenderId, body) => {
+const createLoan = async (actor, body) => {
     const validated = validateCreateLoan(body);
+    const actorId = actor.id || actor._id;
 
-    const { principalAmount: p, interestRate: r, durationMonths: n, startDate } = validated;
-
-    // Calculate EMI (flat interest model)
-    let emi = 0;
-    if (r === 0) {
-        emi = p / n;
-    } else {
-        const totalInterest = p * (r / 100) * n;
-        emi = (p + totalInterest) / n;
+    let targetLenderId = validated.lenderId || actorId;
+    if (!mongoose.Types.ObjectId.isValid(targetLenderId)) {
+        throw new ValidationError('Invalid lenderId format.');
     }
+
+    // 1. Validate Lender
+    const lenderUser = await User.findById(targetLenderId);
+    if (!lenderUser) {
+        const err = new Error('Lender user not found.');
+        err.statusCode = 404;
+        throw err;
+    }
+    if (lenderUser.role !== 'LENDER') {
+        const err = new Error(`User specified as lender (${targetLenderId}) does not have role LENDER.`);
+        err.statusCode = 400;
+        throw err;
+    }
+    if (actor.role === 'LENDER') {
+        targetLenderId = actorId;
+    }
+
+    // 2. Validate Borrower (EXPLICIT EXISTENCE CHECK — NO AUTO CREATION)
+    let borrowerUser;
+    if (validated.borrowerId) {
+        if (!mongoose.Types.ObjectId.isValid(validated.borrowerId)) {
+            throw new ValidationError('Invalid borrowerId format.');
+        }
+        borrowerUser = await User.findById(validated.borrowerId);
+    } else {
+        borrowerUser = await User.findOne({ phone: validated.borrowerPhone });
+    }
+
+    if (!borrowerUser) {
+        const err = new Error('Borrower user not found. Please ensure the borrower has registered an account.');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    if (borrowerUser.role !== 'BORROWER') {
+        const err = new Error(`User specified as borrower (${borrowerUser._id}) does not have role BORROWER.`);
+        err.statusCode = 400;
+        throw err;
+    }
+
+    // 3. Authoritative Financial Calculations (APR Simple Interest)
+    const { principalAmount: p, interestRate: r, durationMonths: n, startDate } = validated;
+    const { totalInterest, totalPayable, emi } = calculateSimpleInterest(p, r, n);
+    const amountPaid = 0;
+    const remainingBalance = totalPayable;
 
     // Extract due date from start date
     const startDateObj = new Date(startDate);
@@ -403,54 +520,133 @@ const createLoan = async (lenderId, body) => {
     const dueDate = dayNum < 10 ? `0${dayNum}` : `${dayNum}`;
 
     const loan = new Loan({
-        lender: lenderId,
-        ...validated,
-        emi: parseFloat(emi.toFixed(2)),
+        lenderId: targetLenderId,
+        borrowerId: borrowerUser._id,
+        borrowerName: validated.borrowerName || borrowerUser.name,
+        borrowerPhone: validated.borrowerPhone || borrowerUser.phone,
+        borrowerAddress: validated.borrowerAddress || borrowerUser.address || '',
+        principalAmount: p,
+        interestRate: r,
+        startDate: startDateObj,
+        durationMonths: n,
+        totalInterest,
+        totalPayable,
+        amountPaid,
+        remainingBalance,
+        emi,
         dueDate,
-        status: 'Active'
+        collateral: validated.collateral,
+        notes: validated.notes,
+        status: 'Active',
+        deletedAt: null
     });
 
     await loan.save();
-    logger.info(`Loan created: ${loan.borrowerName} (₹${loan.principalAmount})`);
-    await invalidatePattern(`loans:${lenderId}:*`);
-    await invalidatePattern(`dashboard:${lenderId}`);
+    logger.info(`Loan created: ${loan.borrowerName} (Principal: ₹${p}, TotalPayable: ₹${totalPayable})`);
+
+    await invalidatePattern(`loans:${lenderUser._id}:*`);
+    await invalidatePattern(`loans:${borrowerUser._id}:*`);
+    await invalidatePattern(`dashboard:${lenderUser._id}*`);
+    await invalidatePattern(`dashboard:${borrowerUser._id}*`);
+
+    loanEvents.emit('loan:created', loan);
     return loan;
 };
 
 /**
  * GET /api/loans/:id — Single loan with computed interest.
+ * Resource-level authorization: actorId must be lenderId OR borrowerId of this loan.
  */
-const getLoanById = async (lenderId, loanId) => {
-    const loan = await Loan.findOne({ _id: loanId, lender: lenderId }).lean();
+const getLoanById = async (actor, loanId) => {
+    const loan = await Loan.findById(loanId).lean();
     if (!loan) {
         const err = new Error('Loan not found.');
         err.statusCode = 404;
         throw err;
     }
 
-    // Get total interest paid for this loan
-    const paymentAgg = await Payment.aggregate([
-        { $match: { loan: loan._id, status: 'Completed' } },
-        { $group: { _id: null, totalPaid: { $sum: '$interestPortion' } } }
-    ]);
-    const totalPaid = paymentAgg.length > 0 ? paymentAgg[0].totalPaid : 0;
-    const interestFields = computeInterestFields(loan, totalPaid);
+    const actorId = (actor.id || actor._id).toString();
+    const isLender = loan.lenderId.toString() === actorId;
+    const isBorrower = loan.borrowerId.toString() === actorId;
+    if (!isLender && !isBorrower) {
+        const err = new Error('Access denied. You are not authorized to view this loan.');
+        err.statusCode = 403;
+        throw err;
+    }
 
-    return { loan: { ...loan, ...interestFields } };
+    const paymentAgg = await Payment.aggregate([
+        { $match: { loanId: loan._id, status: 'Completed' } },
+        { $group: { _id: null, totalInterestPaid: { $sum: '$interestPortion' } } }
+    ]);
+    const totalPaidInterest = paymentAgg.length > 0 ? paymentAgg[0].totalInterestPaid : 0;
+    const interestFields = computeInterestFields(loan, totalPaidInterest);
+    const lenderUser = await User.findById(loan.lenderId).select('name phone email').lean();
+
+    return {
+        loan: {
+            ...loan,
+            ...interestFields,
+            lenderName: lenderUser?.name || 'Lender',
+            lenderPhone: lenderUser?.phone || '',
+            lenderEmail: lenderUser?.email || ''
+        }
+    };
 };
 
 /**
  * PUT /api/loans/:id — Update a loan.
+ * Resource-level Write Authorization:
+ *  - Only the Lender (actor.id === loan.lenderId) is allowed to update metadata/status.
+ *  - Borrowers are rejected with 403 Forbidden.
+ *  - Financial & identity fields are strictly immutable.
+ * Status Transition Enforcement:
+ *  - Status values must be one of ['Active', 'Overdue', 'Closed'].
+ *  - Terminal state 'Closed' cannot be reverted back to 'Active' or 'Overdue'.
+ *  - Setting status to 'Closed' requires remainingBalance === 0.
  */
-const updateLoan = async (lenderId, loanId, body) => {
-    const loan = await Loan.findOne({ _id: loanId, lender: lenderId });
+const updateLoan = async (actor, loanId, body) => {
+    const loan = await Loan.findById(loanId);
     if (!loan) {
         const err = new Error('Loan not found.');
         err.statusCode = 404;
         throw err;
     }
 
-    const allowedUpdates = ['borrowerName', 'borrowerPhone', 'borrowerAddress', 'status', 'collateral', 'notes'];
+    const actorId = (actor.id || actor._id).toString();
+    if (actorId !== loan.lenderId.toString()) {
+        const err = new Error('Access denied. Only the lender can update loan metadata.');
+        err.statusCode = 403;
+        throw err;
+    }
+
+    // Status transition validation
+    if (body.status !== undefined) {
+        const validStatuses = ['Active', 'Overdue', 'Closed'];
+        if (!validStatuses.includes(body.status)) {
+            const err = new Error(`Invalid status '${body.status}'. Allowed status values are: ${validStatuses.join(', ')}.`);
+            err.statusCode = 400;
+            throw err;
+        }
+
+        // Reverting closed loan check
+        if (loan.status === 'Closed' && body.status !== 'Closed') {
+            const err = new Error('Cannot change status of a closed loan unless business rules explicitly permit.');
+            err.statusCode = 400;
+            throw err;
+        }
+
+        // Closing loan with remaining balance check
+        if (body.status === 'Closed' && loan.remainingBalance > 0) {
+            const err = new Error(`Cannot set status to Closed when remaining balance (₹${loan.remainingBalance}) is greater than zero.`);
+            err.statusCode = 400;
+            throw err;
+        }
+
+        loan.status = body.status;
+    }
+
+    // Explicit allowlist for metadata updates
+    const allowedUpdates = ['borrowerAddress', 'collateral', 'notes'];
     allowedUpdates.forEach(field => {
         if (body[field] !== undefined) {
             loan[field] = body[field];
@@ -459,32 +655,54 @@ const updateLoan = async (lenderId, loanId, body) => {
 
     await loan.save();
     logger.info(`Loan updated: ${loan._id}`);
-    await invalidatePattern(`loans:${lenderId}:*`);
-    await invalidatePattern(`dashboard:${lenderId}`);
+    await invalidatePattern(`loans:${loan.lenderId}:*`);
+    await invalidatePattern(`loans:${loan.borrowerId}:*`);
+    await invalidatePattern(`dashboard:${loan.lenderId}*`);
+    await invalidatePattern(`dashboard:${loan.borrowerId}*`);
+
+    loanEvents.emit('loan:updated', loan);
     return loan;
 };
 
 /**
  * DELETE /api/loans/:id — Soft-delete a loan.
+ * Resource-level Write Authorization:
+ *  - Only the Lender (actor.id === loan.lenderId) is allowed to soft-delete.
+ *  - Borrowers are rejected with 403 Forbidden.
+ * Soft Deletion Policy:
+ *  - Sets deletedAt = new Date().
+ *  - Preserves business status independently from soft deletion.
+ *  - Preserves Loan document and Payment history in MongoDB.
  */
-const softDeleteLoan = async (lenderId, loanId) => {
-    const loan = await Loan.findOne({ _id: loanId, lender: lenderId });
+const softDeleteLoan = async (actor, loanId) => {
+    const loan = await Loan.findById(loanId);
     if (!loan) {
         const err = new Error('Loan not found.');
         err.statusCode = 404;
         throw err;
     }
 
-    loan.status = 'Deleted';
+    const actorId = (actor.id || actor._id).toString();
+    if (actorId !== loan.lenderId.toString()) {
+        const err = new Error('Access denied. Only the lender can delete a loan.');
+        err.statusCode = 403;
+        throw err;
+    }
+
     loan.deletedAt = new Date();
     await loan.save();
     logger.info(`Loan soft-deleted: ${loan._id}`);
-    await invalidatePattern(`loans:${lenderId}:*`);
-    await invalidatePattern(`dashboard:${lenderId}`);
+    await invalidatePattern(`loans:${loan.lenderId}:*`);
+    await invalidatePattern(`loans:${loan.borrowerId}:*`);
+    await invalidatePattern(`dashboard:${loan.lenderId}*`);
+    await invalidatePattern(`dashboard:${loan.borrowerId}*`);
+
+    loanEvents.emit('loan:deleted', loan);
     return { message: 'Borrower moved to history successfully.' };
 };
 
 module.exports = {
+    loanEvents,
     getLoans,
     getDashboardStats,
     getPendingPayments,

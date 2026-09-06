@@ -1,0 +1,429 @@
+/* ── PhoneLogin.module.css ──────────────────────────────────
+   Matches the existing Auth glassmorphism aesthetic.
+   Variables mirror Auth.module.css for consistency.
+─────────────────────────────────────────────────────────── */
+
+.container {
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-text: #f0f0f0;
+    --glass-muted: #888888;
+    --glass-input: #1a1a1a;
+    --glass-green: #00ff88;
+
+    width: 100%;
+    max-width: 420px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 2rem 1.75rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    position: relative;
+    overflow: hidden;
+    color: var(--glass-text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Green glow accent */
+.container::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    left: -60px;
+    width: 150px;
+    height: 150px;
+    background: var(--glass-green);
+    filter: blur(80px);
+    border-radius: 50%;
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.inner {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+.header {
+    text-align: center;
+    margin-bottom: 1.75rem;
+}
+
+.iconCircle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(0, 255, 136, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    color: var(--glass-green);
+}
+
+.title {
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    color: var(--glass-muted);
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
+/* ── Phone Input ─────────────────────────────────────────── */
+.phoneRow {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.countryCode {
+    width: 80px;
+    background: var(--glass-input);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 0.8rem 0.6rem;
+    color: var(--glass-text);
+    font-size: 0.9rem;
+    text-align: center;
+    outline: none;
+    font-weight: 500;
+}
+
+.phoneInput {
+    flex: 1;
+    background: var(--glass-input);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    color: var(--glass-text);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    letter-spacing: 1px;
+}
+
+.phoneInput:focus {
+    border-color: rgba(0, 255, 136, 0.3);
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.1);
+}
+
+.phoneInput::placeholder {
+    color: #555;
+    letter-spacing: 0;
+}
+
+/* ── OTP Boxes ───────────────────────────────────────────── */
+.otpSection {
+    margin-bottom: 1.25rem;
+}
+
+.otpLabel {
+    font-size: 0.75rem;
+    color: var(--glass-muted);
+    margin-bottom: 0.75rem;
+    text-align: center;
+    display: block;
+}
+
+.otpGrid {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.otpBox {
+    width: 48px;
+    height: 56px;
+    background: var(--glass-input);
+    border: 1.5px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--glass-text);
+    font-size: 1.4rem;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s ease;
+    caret-color: var(--glass-green);
+}
+
+.otpBox:focus {
+    border-color: var(--glass-green);
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.15);
+    background: rgba(0, 255, 136, 0.04);
+}
+
+.otpBox.filled {
+    border-color: rgba(0, 255, 136, 0.4);
+}
+
+/* ── Resend Row ──────────────────────────────────────────── */
+.resendRow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--glass-muted);
+}
+
+.resendBtn {
+    background: none;
+    border: none;
+    color: var(--glass-green);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.resendBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+/* ── Primary Action Button ───────────────────────────────── */
+.primaryBtn {
+    width: 100%;
+    padding: 0.85rem;
+    border-radius: 50px;
+    border: none;
+    background: var(--glass-green);
+    color: #000;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.25);
+    margin-top: 0.5rem;
+}
+
+.primaryBtn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+}
+
+.primaryBtn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ── Role Selection Cards ────────────────────────────────── */
+.roleGrid {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.roleCard {
+    flex: 1;
+    background: var(--glass-input);
+    border: 2px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.25rem 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.roleCard:hover {
+    border-color: rgba(0, 255, 136, 0.3);
+    background: rgba(0, 255, 136, 0.04);
+}
+
+.roleCard.active {
+    border-color: var(--glass-green);
+    background: rgba(0, 255, 136, 0.08);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.15);
+}
+
+.roleIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.5rem;
+    color: var(--glass-muted);
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.25s ease;
+}
+
+.roleCard.active .roleIcon {
+    color: var(--glass-green);
+    background: rgba(0, 255, 136, 0.12);
+}
+
+.roleName {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--glass-text);
+    margin-bottom: 0.15rem;
+}
+
+.roleDesc {
+    font-size: 0.65rem;
+    color: var(--glass-muted);
+}
+
+/* ── Name Input ──────────────────────────────────────────── */
+.nameInput {
+    width: 100%;
+    background: var(--glass-input);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    color: var(--glass-text);
+    font-size: 0.85rem;
+    outline: none;
+    margin-bottom: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.nameInput:focus {
+    border-color: rgba(0, 255, 136, 0.3);
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.1);
+}
+
+.nameInput::placeholder {
+    color: #555;
+}
+
+.nameLabel {
+    font-size: 0.7rem;
+    color: var(--glass-muted);
+    margin-bottom: 0.4rem;
+    display: block;
+}
+
+/* ── Error Box ───────────────────────────────────────────── */
+.errorBox {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: #fca5a5;
+}
+
+/* ── Back Button ─────────────────────────────────────────── */
+.backBtn {
+    background: none;
+    border: none;
+    color: var(--glass-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 1.25rem;
+    padding: 0;
+    transition: color 0.2s ease;
+}
+
+.backBtn:hover {
+    color: var(--glass-text);
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+.footer {
+    text-align: center;
+    margin-top: 1.75rem;
+    font-size: 0.8rem;
+    color: var(--glass-muted);
+}
+
+.link {
+    color: var(--glass-green);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.link:hover {
+    text-decoration: underline;
+}
+
+/* ── OR Separator ────────────────────────────────────────── */
+.orSeparator {
+    position: relative;
+    text-align: center;
+    margin: 1.25rem 0;
+    color: #444;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.orSeparator::before,
+.orSeparator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 35%;
+    height: 1px;
+    background: var(--glass-border);
+}
+
+.orSeparator::before { left: 5%; }
+.orSeparator::after { right: 5%; }
+
+/* ── Google Button ───────────────────────────────────────── */
+.googleBtn {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--glass-input);
+    color: var(--glass-text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    transition: all 0.3s ease;
+}
+
+.googleBtn:hover:not(:disabled) {
+    border-color: rgba(66, 133, 244, 0.4);
+    box-shadow: 0 0 20px rgba(66, 133, 244, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.googleBtn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ── Spinner animation ───────────────────────────────────── */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}

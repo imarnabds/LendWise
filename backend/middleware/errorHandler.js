@@ -7,8 +7,14 @@
 const logger = require('../utils/logger');
 
 const errorHandler = (err, req, res, next) => {
-    const statusCode = err.statusCode || 500;
-    const message = err.message || 'Internal Server Error';
+    let statusCode = err.statusCode || 500;
+    let message = err.message || 'Internal Server Error';
+
+    // Handle Mongoose CastError (invalid ObjectId format)
+    if (err.name === 'CastError') {
+        statusCode = 400;
+        message = `Invalid ID format: ${err.value}`;
+    }
 
     // Log the error
     if (statusCode >= 500) {

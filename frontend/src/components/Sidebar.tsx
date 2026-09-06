@@ -7,7 +7,6 @@ import {
     Clock,
     History,
     BarChart3,
-    Bell,
     Settings,
     LogOut,
     Archive
@@ -20,6 +19,8 @@ interface SidebarProps {
     onLogout: () => void;
 }
 
+import logoImg from '../assets/logo_w.png';
+
 export const Sidebar: React.FC<SidebarProps> = ({ role, onLogout }) => {
     const { t } = useTranslation();
 
@@ -31,7 +32,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, onLogout }) => {
         { to: '/lender/history', icon: <History size={20} />, label: t('sidebar.history', 'Payment History') },
         { to: '/lender/reports', icon: <BarChart3 size={20} />, label: t('sidebar.reports', 'Reports & Analytics') },
         { to: '/lender/borrower-history', icon: <Archive size={20} />, label: "Borrower's History" },
-        { to: '/lender/notifications', icon: <Bell size={20} />, label: t('sidebar.notifications', 'Notifications') },
         { to: '/settings', icon: <Settings size={20} />, label: t('common.settings', 'Settings') },
     ];
 
@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, onLogout }) => {
         { to: '/borrower/my-loans', icon: <Wallet size={20} />, label: t('sidebar.myLoans', 'My Loans') },
         { to: '/borrower/payment-history', icon: <History size={20} />, label: t('sidebar.history', 'Payment History') },
         { to: '/borrower/upcoming-dues', icon: <Clock size={20} />, label: t('sidebar.upcomingDues', 'Upcoming Dues') },
-        { to: '/borrower/notifications', icon: <Bell size={20} />, label: t('sidebar.notifications', 'Notifications') },
+        { to: '/borrower/reports', icon: <BarChart3 size={20} />, label: t('sidebar.reports', 'Reports & Analytics') },
         { to: '/settings', icon: <Settings size={20} />, label: t('common.settings', 'Settings') },
     ];
 
@@ -49,8 +49,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, onLogout }) => {
     return (
         <div className={styles.sidebar}>
             <div className={styles.logoContainer}>
-                <div className={styles.logoIcon}>M</div>
-                <h1 className={styles.logoText}>MicroLend</h1>
+                <img src={logoImg} alt="LendWise Logo" className="w-[50px] h-[50px] -ml-2 object-contain drop-shadow-[0_0_5px_rgba(0,255,156,0.3)] shrink-0" />
+                <h1 className="text-xl font-extrabold tracking-tight text-white ml-2">
+                    Lend<span className="text-[#00FF9C]">Wise</span>
+                </h1>
             </div>
 
             <nav className={styles.nav}>

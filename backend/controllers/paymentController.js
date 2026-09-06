@@ -1,14 +1,14 @@
 /**
  * Payment Controller — thin HTTP layer.
- * Extracts request data → calls service → sends response.
- * All business logic lives in paymentService.js.
+ * Extracts request data and passes authenticated actor (req.user) to service layer.
+ * All business logic & resource authorization lives in paymentService.js.
  */
 
 const paymentService = require('../services/paymentService');
 
 const recordPayment = async (req, res, next) => {
     try {
-        const result = await paymentService.recordPayment(req.user.id, req.body);
+        const result = await paymentService.recordPayment(req.user, req.body);
         res.status(201).json(result);
     } catch (error) {
         next(error);
@@ -17,7 +17,7 @@ const recordPayment = async (req, res, next) => {
 
 const getPayments = async (req, res, next) => {
     try {
-        const result = await paymentService.getPayments(req.user.id, {
+        const result = await paymentService.getPayments(req.user, {
             pagination: req.pagination,
             filters: req.filters
         });
@@ -27,9 +27,18 @@ const getPayments = async (req, res, next) => {
     }
 };
 
+const getPaymentById = async (req, res, next) => {
+    try {
+        const result = await paymentService.getPaymentById(req.user, req.params.id);
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
 const getReports = async (req, res, next) => {
     try {
-        const result = await paymentService.getReports(req.user.id);
+        const result = await paymentService.getReports(req.user);
         res.json(result);
     } catch (error) {
         next(error);
@@ -38,6 +47,7 @@ const getReports = async (req, res, next) => {
 
 module.exports = {
     recordPayment,
+    getPaymentById,
     getPayments,
     getReports
 };

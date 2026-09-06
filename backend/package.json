@@ -1,7 +1,7 @@
 {
-  "name": "backend",
-  "version": "2.0.0",
-  "description": "MicroLend — Production-grade loan management API",
+  "name": "lendwise-api",
+  "version": "1.0.0",
+  "description": "LendWise — Production-grade loan & microfinance management API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -25,17 +25,20 @@
     "express": "^5.2.1",
     "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^7.5.0",
+    "firebase-admin": "^13.10.0",
     "helmet": "^8.1.0",
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.2",
     "morgan": "^1.10.0",
+    "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.17.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "socket.io-client": "^4.8.3",
     "supertest": "^7.1.0"
   }
 }

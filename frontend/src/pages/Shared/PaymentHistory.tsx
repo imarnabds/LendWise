@@ -5,6 +5,7 @@ import { Button } from '../../components/Button';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { apiGetPayments } from '../../api';
+import { onPaymentCreated } from '../../services/socket';
 import styles from './PaymentHistory.module.css';
 
 interface PaymentRecord {
@@ -35,12 +36,24 @@ export const PaymentHistory: React.FC = () => {
     const PAGE_LIMIT = 20;
 
     useEffect(() => {
-        apiGetPayments(searchTerm || undefined, currentPage, PAGE_LIMIT)
-            .then(data => {
-                setPayments(data.payments || []);
-                if (data.pagination) setPaginationMeta(data.pagination);
-            })
-            .catch(() => { });
+        const fetchPayments = () => {
+            apiGetPayments(searchTerm || undefined, currentPage, PAGE_LIMIT)
+                .then(data => {
+                    setPayments(data.payments || []);
+                    if (data.pagination) setPaginationMeta(data.pagination);
+                })
+                .catch(() => { });
+        };
+
+        fetchPayments();
+
+        const unsubscribe = onPaymentCreated(() => {
+            fetchPayments();
+        });
+
+        return () => {
+            unsubscribe();
+        };
     }, [searchTerm, currentPage]);
 
     const getStatusClass = (status: string) => {

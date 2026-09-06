@@ -12,26 +12,8 @@ export const AuthLayout: React.FC = () => {
 
     return (
         <div className={styles.container}>
-            <div className={styles.leftPanel}>
-                <div className={styles.brand}>
-                    <div className={styles.logoMark}>M</div>
-                    <h1 className={styles.brandTitle}>MicroLend</h1>
-                </div>
-
-                <div className={styles.heroContent}>
-                    <h2>Empowering Your Financial Growth</h2>
-                    <p>
-                        Experience a seamless, secure, and smart lending management platform designed for modern financial needs.
-                    </p>
-                </div>
-
-                <div className={styles.overlay}></div>
-            </div>
-
-            <div className={styles.rightPanel}>
-                <div className={`${styles.authContainer} page-fade-in`}>
-                    <Outlet />
-                </div>
+            <div className={`${styles.authContainer} page-fade-in`}>
+                <Outlet />
             </div>
         </div>
     );

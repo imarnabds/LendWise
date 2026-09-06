@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Download, BellRing, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
@@ -29,21 +29,25 @@ export const RecordPayment: React.FC = () => {
         amountPaid: '',
         paymentMode: 'UPI',
         interestPaid: '',
-        notifySms: true
+        principalPaid: ''
     });
+    const [showPrincipal, setShowPrincipal] = useState(false);
 
     const [isProcessing, setIsProcessing] = useState(false);
     const location = useLocation();
 
     useEffect(() => {
-        apiGetLoans({ status: 'Active' })
+        apiGetLoans({ limit: 1000 })
             .then(data => {
-                const options = (data.loans || []).map((l: any) => ({
-                    id: l.id,
-                    name: l.name,
-                    principalAmount: l.amount,
-                    interestRate: parseFloat(l.interest) || 0,
-                    remainingBalance: l.remainingBalance || l.amount,
+                const loanList = data.data || data.loans || [];
+                const options = loanList
+                    .filter((l: any) => l.status !== 'Closed' && l.status !== 'Deleted')
+                    .map((l: any) => ({
+                    id: l.loanId || l.id,
+                    name: l.borrowerName || l.name,
+                    principalAmount: l.principal || l.amount,
+                    interestRate: parseFloat(l.interestRate || l.interest) || 0,
+                    remainingBalance: l.remainingBalance || l.principal || l.amount,
                     emi: l.emi
                 }));
                 setBorrowerOptions(options);
@@ -53,10 +57,12 @@ export const RecordPayment: React.FC = () => {
                     if (borrower) {
                         setSelectedBorrower(borrower.id);
                         const monthlyInterest = Number((borrower.principalAmount * (borrower.interestRate / 100)).toFixed(2));
+                        const defaultAmount = borrower.emi || monthlyInterest;
+                        const defaultStr = defaultAmount ? defaultAmount.toString() : '';
                         setFormData(prev => ({
                             ...prev,
-                            amountPaid: '',
-                            interestPaid: monthlyInterest.toString()
+                            amountPaid: defaultStr,
+                            interestPaid: defaultStr
                         }));
                     }
                 }
@@ -71,17 +77,33 @@ export const RecordPayment: React.FC = () => {
         ? Number((activeBorrower.principalAmount * (activeBorrower.interestRate / 100)).toFixed(2))
         : 0;
 
-    // Current Due = Principal + Monthly Interest
-    const currentDue = activeBorrower
-        ? activeBorrower.principalAmount + monthlyInterest
+    // True outstanding balance:
+    // If the DB has a meaningful remainingBalance (> principalAmount means interest has accrued),
+    // use it. Otherwise fall back to principalAmount + monthlyInterest as a safe estimate.
+    const outstandingBalance = activeBorrower
+        ? (activeBorrower.remainingBalance > 0
+            ? activeBorrower.remainingBalance
+            : activeBorrower.principalAmount + monthlyInterest)
         : 0;
 
-    const remainingBalance = currentDue - parseFloat(formData.amountPaid || '0');
+    const interestPaid = parseFloat(formData.amountPaid || '0');
+    const principalPaid = showPrincipal ? parseFloat(formData.principalPaid || '0') : 0;
+
+    // Remaining Balance = outstanding balance minus everything being paid now
+    const remainingBalance = Math.max(0, outstandingBalance - interestPaid - principalPaid);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-        setFormData(prev => ({ ...prev, [name]: val }));
+        setFormData(prev => {
+            const newForm = { ...prev, [name]: val };
+            // Only sync interestPaid alongside amountPaid if the user hasn't manually
+            // diverged the two fields (i.e., they are still equal)
+            if (name === 'amountPaid' && prev.interestPaid === prev.amountPaid) {
+                newForm.interestPaid = val as string;
+            }
+            return newForm;
+        });
     };
 
     const handleBorrowerSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -90,10 +112,12 @@ export const RecordPayment: React.FC = () => {
         const borrower = borrowerOptions.find(b => b.id === e.target.value);
         if (borrower) {
             const interest = Number((borrower.principalAmount * (borrower.interestRate / 100)).toFixed(2));
+            const defaultAmt = borrower.emi || interest;
+            const defaultStr = defaultAmt ? defaultAmt.toString() : '';
             setFormData(prev => ({
                 ...prev,
-                amountPaid: '',
-                interestPaid: interest.toString()
+                amountPaid: defaultStr,
+                interestPaid: defaultStr
             }));
         } else {
             setFormData(prev => ({ ...prev, amountPaid: '', interestPaid: '' }));
@@ -107,29 +131,25 @@ export const RecordPayment: React.FC = () => {
         setIsProcessing(true);
 
         try {
+            const principalAmt = showPrincipal ? parseFloat(formData.principalPaid || '0') : 0;
+            const totalAmount = parseFloat(formData.amountPaid || '0') + principalAmt;
             const data = await apiRecordPayment({
                 loanId: selectedBorrower,
-                amount: parseFloat(formData.amountPaid),
+                amount: totalAmount,
                 interestPortion: parseFloat(formData.interestPaid || '0'),
+                principalPortion: principalAmt,
                 paymentDate: formData.paymentDate,
                 mode: formData.paymentMode
             });
 
             success(data.message || `Payment of ₹${formData.amountPaid} recorded for ${activeBorrower?.name}`);
 
-            if (formData.notifySms) {
-                setTimeout(() => success('SMS Receipt sent to borrower!'), 1000);
-            }
+            // Navigate back after a short delay so the user can read the success toast
+            setTimeout(() => {
+                const returnTo = location.state?.from || '/lender/active-loans';
+                navigate(returnTo, { replace: true });
+            }, 1200);
 
-            // Reset form
-            setSelectedBorrower('');
-            setFormData({
-                paymentDate: new Date().toISOString().split('T')[0],
-                amountPaid: '',
-                paymentMode: 'UPI',
-                interestPaid: '',
-                notifySms: true
-            });
         } catch (err: any) {
             error(err.message || 'Failed to record payment.');
         } finally {
@@ -137,9 +157,7 @@ export const RecordPayment: React.FC = () => {
         }
     };
 
-    const handleDownloadReceipt = () => {
-        success('Receipt downloading...');
-    };
+
 
     return (
         <div className={styles.container}>
@@ -202,6 +220,39 @@ export const RecordPayment: React.FC = () => {
                         />
                     </div>
 
+                    {/* Principal Repayment Toggle */}
+                    <div className={styles.principalToggleRow}>
+                        <button
+                            type="button"
+                            className={styles.principalToggleBtn}
+                            onClick={() => {
+                                setShowPrincipal(p => !p);
+                                if (showPrincipal) setFormData(prev => ({ ...prev, principalPaid: '' }));
+                            }}
+                        >
+                            <span className={styles.principalToggleIcon}>{showPrincipal ? '▼' : '▶'}</span>
+                            Borrower is also paying Principal Amount
+                        </button>
+                    </div>
+
+                    {showPrincipal && (
+                        <div className={styles.principalBox}>
+                            <Input
+                                label="Principal Amount Being Repaid (₹)"
+                                name="principalPaid"
+                                type="number"
+                                value={formData.principalPaid}
+                                onChange={handleChange}
+                                fullWidth
+                                placeholder="e.g. 50000"
+                            />
+                            <p className={styles.principalNote}>
+                                This will reduce the outstanding principal on the loan.
+                                Current outstanding balance: ₹{outstandingBalance.toLocaleString()}
+                            </p>
+                        </div>
+                    )}
+
                     <div className={styles.row}>
                         <div className={styles.inputGroup}>
                             <label className={styles.label}>{t('recordPayment.modeOfPayment')}</label>
@@ -231,13 +282,19 @@ export const RecordPayment: React.FC = () => {
                         </div>
                         <div className={styles.summaryDivider}></div>
                         <div className={styles.summaryItem}>
-                            <span className={styles.summaryLabel}>Current Due:</span>
-                            <span className={`${styles.summaryValue} ${styles.finalBalance}`}>₹{currentDue.toLocaleString()}</span>
+                            <span className={styles.summaryLabel}>Outstanding Balance:</span>
+                            <span className={`${styles.summaryValue} ${styles.finalBalance}`}>₹{outstandingBalance.toLocaleString()}</span>
                         </div>
                         <div className={styles.summaryItem}>
-                            <span className={styles.summaryLabel}>{t('recordPayment.amountDeducted')}</span>
-                            <span className={`${styles.summaryValue} ${styles.deduction}`}>-₹{parseFloat(formData.amountPaid || '0').toLocaleString()}</span>
+                            <span className={styles.summaryLabel}>Interest Paid:</span>
+                            <span className={`${styles.summaryValue} ${styles.deduction}`}>-₹{interestPaid.toLocaleString()}</span>
                         </div>
+                        {showPrincipal && principalPaid > 0 && (
+                            <div className={styles.summaryItem}>
+                                <span className={styles.summaryLabel}>Principal Repaid:</span>
+                                <span className={`${styles.summaryValue} ${styles.deduction}`}>-₹{principalPaid.toLocaleString()}</span>
+                            </div>
+                        )}
                         <div className={styles.summaryDivider}></div>
                         <div className={styles.summaryItem}>
                             <span className={styles.summaryLabel}>{t('recordPayment.remainingBalance')}</span>
@@ -247,32 +304,8 @@ export const RecordPayment: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className={styles.optionsBox}>
-                        <label className={styles.checkboxLabel}>
-                            <input
-                                type="checkbox"
-                                name="notifySms"
-                                checked={formData.notifySms}
-                                onChange={handleChange}
-                                className={styles.checkbox}
-                            />
-                            <span className={styles.checkboxText}>
-                                <BellRing size={16} /> {t('recordPayment.sendSms')}
-                            </span>
-                        </label>
-                    </div>
 
                     <div className={styles.actions}>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleDownloadReceipt}
-                            disabled={!activeBorrower || !formData.amountPaid}
-                            className={styles.receiptBtn}
-                        >
-                            <Download size={18} /> {t('recordPayment.previewReceipt')}
-                        </Button>
-
                         <Button
                             type="submit"
                             variant="primary"

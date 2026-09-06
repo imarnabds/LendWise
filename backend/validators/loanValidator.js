@@ -16,7 +16,7 @@ class ValidationError extends Error {
  * Throws a ValidationError if any required field is missing or invalid.
  */
 const validateCreateLoan = (body) => {
-    const { borrowerName, borrowerPhone, principalAmount, interestRate, startDate, durationMonths } = body;
+    const { borrowerName, borrowerPhone, principalAmount, interestRate, startDate, durationMonths, lenderId, borrowerId } = body;
 
     if (!borrowerName || typeof borrowerName !== 'string' || borrowerName.trim().length === 0) {
         throw new ValidationError('Borrower name is required.');
@@ -53,7 +53,9 @@ const validateCreateLoan = (body) => {
         startDate,
         durationMonths: n,
         collateral: (body.collateral || '').trim(),
-        notes: (body.notes || '').trim()
+        notes: (body.notes || '').trim(),
+        lenderId: lenderId ? String(lenderId).trim() : undefined,
+        borrowerId: borrowerId ? String(borrowerId).trim() : undefined
     };
 };
 

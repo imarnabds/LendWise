@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Eye, BellRing, Phone } from 'lucide-react';
+import { Search, Filter, Eye } from 'lucide-react';
 import { Card } from '../../components/Card';
+import { Modal } from '../../components/Modal';
+import { Button } from '../../components/Button';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { apiGetPendingPayments } from '../../api';
 import styles from './BorrowerList.module.css'; // Reusing the list layout CSS
 
@@ -27,11 +30,13 @@ interface PaginationMeta {
 
 export const PendingPayments: React.FC = () => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [payments, setPayments] = useState<PendingPayment[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [paginationMeta, setPaginationMeta] = useState<PaginationMeta | null>(null);
+    const [selectedLoan, setSelectedLoan] = useState<PendingPayment | null>(null);
     const PAGE_LIMIT = 20;
 
     useEffect(() => {
@@ -121,14 +126,12 @@ export const PendingPayments: React.FC = () => {
                                     </td>
                                     <td>
                                         <div className={styles.actionButtons}>
-                                            <button className={styles.iconBtn} title={t('pendingPayments.viewLoanDetails') || 'View Loan Details'}>
+                                            <button
+                                                className={styles.iconBtn}
+                                                title={t('pendingPayments.viewLoanDetails') || 'View Loan Details'}
+                                                onClick={() => setSelectedLoan(payment)}
+                                            >
                                                 <Eye size={16} />
-                                            </button>
-                                            <button className={styles.iconBtn} title={t('pendingPayments.sendSmsReminder') || 'Send SMS Reminder'}>
-                                                <BellRing size={16} />
-                                            </button>
-                                            <button className={styles.iconBtn} title={t('pendingPayments.callBorrower') || 'Call Borrower'}>
-                                                <Phone size={16} />
                                             </button>
                                         </div>
                                     </td>
@@ -168,6 +171,30 @@ export const PendingPayments: React.FC = () => {
                     </div>
                 )}
             </Card>
+
+            <Modal isOpen={!!selectedLoan} onClose={() => setSelectedLoan(null)} title={t('borrowerList.viewDetails') || 'Pending Payment Details'}>
+                {selectedLoan && (
+                    <div className={styles.modalContent}>
+                        <div className={styles.modalRow}><strong>Name:</strong> <span>{selectedLoan.name}</span></div>
+                        <div className={styles.modalRow}><strong>Contact:</strong> <span>{selectedLoan.contact}</span></div>
+                        <div className={styles.modalRow}><strong>Status:</strong>
+                            <span className={`${styles.statusBadge} ${getStatusClass(selectedLoan.status)}`} style={{marginLeft: '0.5rem', padding: '0.1rem 0.5rem'}}>
+                                {getDisplayStatus(selectedLoan.status)}
+                            </span>
+                        </div>
+                        <div className={styles.modalRow}><strong>Due Date:</strong> <span>{new Date(selectedLoan.dueDate).toLocaleDateString()}</span></div>
+                        <div className={styles.modalRow}><strong>Days Late:</strong> <span>{selectedLoan.daysLate} Days</span></div>
+                        <div className={styles.modalRow}><strong>Monthly Interest Due:</strong> <span>₹{selectedLoan.interestComponent.toLocaleString()}</span></div>
+                        <div className={styles.modalRow}><strong>Amount Paid (This Cycle):</strong> <span>₹{selectedLoan.amountPaid.toLocaleString()}</span></div>
+                        <div className={styles.modalRow}><strong>Remaining Amount Due:</strong> <span style={{color: 'var(--color-error)', fontWeight: 'bold'}}>₹{selectedLoan.amountDue.toLocaleString()}</span></div>
+
+                        <div className={styles.modalActions}>
+                            <Button variant="outline" onClick={() => setSelectedLoan(null)}>Close</Button>
+                            <Button variant="primary" onClick={() => navigate('/lender/record-payment', { state: { loanId: selectedLoan.id, from: '/lender/pending-payments' } })}>Record Payment</Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };

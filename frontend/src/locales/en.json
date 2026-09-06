@@ -232,7 +232,7 @@
         "status": "Status"
     },
     "landing": {
-        "brandTitle": "MicroLend",
+        "brandTitle": "LendWise",
         "tagline": "Smart & Secure Lending Management System",
         "borrowerTitle": "Borrower",
         "borrowerDesc": "Apply for loans, manage repayments, and track your history.",
@@ -256,7 +256,7 @@
         "signUp": "Sign up",
         "demoTipLogin": "Demo Tip: Use any details to login. Type 'borrower' in the mobile/email field to login as Borrower, otherwise it defaults to Lender.",
         "createAccount": "Create an Account",
-        "joinAs": "Join MicroLend as a {{role}}",
+        "joinAs": "Join LendWise as a {{role}}",
         "fullName": "Full Name *",
         "mobileNumber": "Mobile Number *",
         "emailOptional": "Email (Optional)",

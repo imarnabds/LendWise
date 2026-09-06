@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, FileSpreadsheet } from 'lucide-react';
+import { FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
 import {
     AreaChart,
     Area,
@@ -16,7 +16,8 @@ import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { useToast } from '../../context/ToastContext';
 import { useTranslation } from 'react-i18next';
-import { apiGetReports } from '../../api';
+import { apiGetReports, apiDownloadReportPdf, apiDownloadReportExcel } from '../../api';
+import { onPaymentCreated } from '../../services/socket';
 import styles from './Reports.module.css';
 
 interface RevenueTrend {
@@ -41,50 +42,117 @@ interface Transaction {
 }
 
 export const LenderReports: React.FC = () => {
-    const { success } = useToast();
+    const { success, error } = useToast();
     const { t } = useTranslation();
 
     const [revenueTrend, setRevenueTrend] = useState<RevenueTrend[]>([]);
     const [consistency, setConsistency] = useState<ConsistencyItem[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [downloading, setDownloading] = useState<'pdf' | 'excel' | null>(null);
 
     useEffect(() => {
-        apiGetReports()
-            .then(data => {
-                // Map revenue trend for chart
-                setRevenueTrend((data.revenueTrend || []).map((item: any) => ({
-                    name: item.name,
-                    principal: item.principalCollected,
-                    interest: item.interestEarned
-                })));
+        const fetchReports = () => {
+            apiGetReports()
+                .then(data => {
+                    // Map revenue trend for chart
+                    setRevenueTrend((data.revenueTrend || []).map((item: any) => ({
+                        name: item.name,
+                        principal: item.principalCollected,
+                        interest: item.interestEarned
+                    })));
 
-                // Map consistency with colors
-                const fills = ['var(--color-success)', 'var(--color-primary-dark)', 'var(--color-error)'];
-                setConsistency((data.paymentConsistency || []).map((item: any, i: number) => ({
-                    name: item.name,
-                    value: item.value,
-                    fill: fills[i] || 'var(--color-primary)'
-                })));
+                    // Map consistency with colors
+                    const fills = ['var(--color-success)', 'var(--color-primary-dark)', 'var(--color-error)'];
+                    setConsistency((data.paymentConsistency || []).map((item: any, i: number) => ({
+                        name: item.name,
+                        value: item.value,
+                        fill: fills[i] || 'var(--color-primary)'
+                    })));
 
-                setTransactions(data.recentTransactions || []);
-            })
-            .catch(() => {
-                // Fallback to empty data
-            });
+                    setTransactions(data.recentTransactions || []);
+                })
+                .catch(() => { });
+        };
+
+        fetchReports();
+
+        const unsubscribe = onPaymentCreated(() => {
+            fetchReports();
+        });
+
+        return () => {
+            unsubscribe();
+        };
     }, []);
 
-    const handleExport = (type: 'pdf' | 'excel') => {
-        success(`Exporting report to ${type.toUpperCase()}...`);
+    const handleExport = async (type: 'pdf' | 'excel') => {
+        if (downloading) return;
+        setDownloading(type);
+        try {
+            if (type === 'pdf') {
+                const blob = await apiDownloadReportPdf();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `LendWise_Financial_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                success('PDF report downloaded successfully.');
+            } else {
+                const blob = await apiDownloadReportExcel();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `LendWise_Financial_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                success('Excel report downloaded successfully.');
+            }
+        } catch (err: any) {
+            error(err.message || `Failed to export ${type.toUpperCase()} report.`);
+        } finally {
+            setDownloading(null);
+        }
     };
 
     return (
         <div className={styles.container}>
             <div className={styles.headerActions}>
-                <Button variant="outline" onClick={() => handleExport('pdf')} className={styles.exportBtn}>
-                    <FileText size={18} /> {t('reports.exportPdf')}
+                <Button
+                    variant="outline"
+                    onClick={() => handleExport('pdf')}
+                    disabled={downloading !== null}
+                    className={styles.exportBtn}
+                >
+                    {downloading === 'pdf' ? (
+                        <>
+                            <Loader2 size={18} className="animate-spin" /> Generating PDF...
+                        </>
+                    ) : (
+                        <>
+                            <FileText size={18} /> {t('reports.exportPdf')}
+                        </>
+                    )}
                 </Button>
-                <Button variant="primary" onClick={() => handleExport('excel')} className={styles.exportBtn}>
-                    <FileSpreadsheet size={18} /> {t('reports.exportExcel')}
+                <Button
+                    variant="primary"
+                    onClick={() => handleExport('excel')}
+                    disabled={downloading !== null}
+                    className={styles.exportBtn}
+                >
+                    {downloading === 'excel' ? (
+                        <>
+                            <Loader2 size={18} className="animate-spin" /> Generating Excel...
+                        </>
+                    ) : (
+                        <>
+                            <FileSpreadsheet size={18} /> {t('reports.exportExcel')}
+                        </>
+                    )}
                 </Button>
             </div>
 

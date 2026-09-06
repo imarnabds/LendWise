@@ -1,24 +1,37 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { setToken, removeToken, apiGetMe } from '../api';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { getToken, setToken, removeToken, apiGetMe } from '../api';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
-type Role = 'lender' | 'borrower' | null;
+export type Role = 'lender' | 'borrower' | null;
 
-interface User {
+const normalizeRole = (roleStr?: string | null): Role => {
+    if (!roleStr) return null;
+    const r = roleStr.toLowerCase();
+    if (r === 'lender') return 'lender';
+    if (r === 'borrower') return 'borrower';
+    return null;
+};
+
+export interface User {
     id: string;
     name: string;
     role: Role;
     email?: string;
     phone: string;
+    address?: string;
+    emailNotifications?: boolean;
 }
 
 interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     role: Role;
-    login: (userData: User, token: string) => void;
+    isLoaded: boolean;
+    login: (userData: User, token: string, rememberMe?: boolean) => void;
     logout: () => void;
     setRoleSelection: (role: Role) => void;
     selectedSignupRole: Role;
+    updateUser: (updated: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,53 +49,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [selectedSignupRole, setSelectedSignupRole] = useState<Role>(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
+    const logout = useCallback(() => {
+        setUser(null);
+        removeToken();
+        disconnectSocket();
+        localStorage.removeItem('mockUser');
+        sessionStorage.removeItem('mockUser');
+    }, []);
+
+    const updateUser = useCallback((updated: Partial<User>) => {
+        setUser((prev) => (prev ? { ...prev, ...updated } : null));
+    }, []);
+
     useEffect(() => {
-        // Try to restore session from JWT token
-        const token = localStorage.getItem('token');
+        // Try to restore session from stored JWT token
+        const token = getToken();
         if (token) {
+            connectSocket(token);
             apiGetMe()
                 .then((data) => {
-                    setUser({
-                        id: data.user._id || data.user.id,
-                        name: data.user.name,
-                        role: data.user.role,
-                        email: data.user.email,
-                        phone: data.user.phone
-                    });
+                    if (data?.user) {
+                        setUser({
+                            id: data.user._id || data.user.id,
+                            name: data.user.name,
+                            role: normalizeRole(data.user.role),
+                            email: data.user.email,
+                            phone: data.user.phone,
+                            address: data.user.address || '',
+                            emailNotifications: data.user.emailNotifications !== false
+                        });
+                    } else {
+                        logout();
+                    }
                 })
                 .catch(() => {
-                    // Token is invalid/expired — clear it
-                    removeToken();
-                    localStorage.removeItem('mockUser');
+                    logout();
                 })
                 .finally(() => setIsLoaded(true));
         } else {
-            // Fallback: check for old mock user
-            const storedUser = localStorage.getItem('mockUser');
-            if (storedUser) {
-                setUser(JSON.parse(storedUser));
-            }
             setIsLoaded(true);
         }
-    }, []);
+    }, [logout]);
 
-    const login = (userData: User, token: string) => {
-        setUser(userData);
-        setToken(token);
-        localStorage.setItem('mockUser', JSON.stringify(userData));
-    };
+    useEffect(() => {
+        const handleAuthExpired = () => {
+            logout();
+        };
 
-    const logout = () => {
-        setUser(null);
-        removeToken();
-        localStorage.removeItem('mockUser');
+        window.addEventListener('lendwise-auth-expired', handleAuthExpired);
+        return () => {
+            window.removeEventListener('lendwise-auth-expired', handleAuthExpired);
+        };
+    }, [logout]);
+
+    const login = (userData: User, token: string, rememberMe: boolean = true) => {
+        const normalized = {
+            ...userData,
+            role: normalizeRole(userData.role)
+        };
+        setUser(normalized);
+        setToken(token, rememberMe);
+        connectSocket(token);
     };
 
     const setRoleSelection = (role: Role) => {
         setSelectedSignupRole(role);
     };
-
-    if (!isLoaded) return null;
 
     return (
         <AuthContext.Provider
@@ -90,10 +122,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 user,
                 isAuthenticated: !!user,
                 role: user?.role || null,
+                isLoaded,
                 login,
                 logout,
                 selectedSignupRole,
-                setRoleSelection
+                setRoleSelection,
+                updateUser
             }}
         >
             {children}

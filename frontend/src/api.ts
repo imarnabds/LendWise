@@ -1,21 +1,28 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Get stored JWT token
-const getToken = (): string | null => {
-    return localStorage.getItem('token');
+// Get stored JWT token (checks localStorage then sessionStorage)
+export const getToken = (): string | null => {
+    return localStorage.getItem('token') || sessionStorage.getItem('token');
 };
 
-// Set JWT token
-export const setToken = (token: string) => {
-    localStorage.setItem('token', token);
+// Set JWT token (localStorage if rememberMe is true, sessionStorage if false)
+export const setToken = (token: string, rememberMe: boolean = true) => {
+    if (rememberMe) {
+        localStorage.setItem('token', token);
+        sessionStorage.removeItem('token');
+    } else {
+        sessionStorage.setItem('token', token);
+        localStorage.removeItem('token');
+    }
 };
 
-// Remove JWT token
+// Remove JWT token from all storage locations
 export const removeToken = () => {
     localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
 };
 
-// Generic fetch wrapper with auth headers
+// Generic fetch wrapper with auth headers & resilient response parsing
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const token = getToken();
     const headers: Record<string, string> = {
@@ -32,14 +39,34 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
         headers
     });
 
-    const data = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    let data: any = {};
+
+    if (contentType.includes('application/json')) {
+        try {
+            data = await response.json();
+        } catch {
+            data = { message: 'Invalid JSON response received from server' };
+        }
+    } else {
+        const text = await response.text();
+        if (import.meta.env.DEV) {
+            console.warn(`[apiFetch] Non-JSON response received for ${endpoint} (${response.status}):`, text.slice(0, 200));
+        }
+        data = { message: response.ok ? text : `Server error (${response.status}): Unable to process request` };
+    }
 
     if (!response.ok) {
+        // If status is 401 and it's not a login attempt, dispatch global auth expiration event
+        if (response.status === 401 && !endpoint.includes('/auth/login')) {
+            window.dispatchEvent(new CustomEvent('lendwise-auth-expired'));
+        }
         throw new Error(data.message || 'Something went wrong');
     }
 
     return data;
 };
+
 
 // ==================== AUTH ====================
 
@@ -58,7 +85,7 @@ export const apiLogin = (body: { mobileOrEmail: string; password: string }) =>
 
 export const apiGetMe = () => apiFetch('/auth/me');
 
-export const apiUpdateProfile = (body: { name?: string; email?: string; phone?: string }) =>
+export const apiUpdateProfile = (body: { name?: string; email?: string; phone?: string; address?: string; emailNotifications?: boolean }) =>
     apiFetch('/auth/profile', { method: 'PUT', body: JSON.stringify(body) });
 
 export const apiChangePassword = (body: { currentPassword: string; newPassword: string }) =>
@@ -90,7 +117,10 @@ export const apiGetLoans = (params?: { search?: string; status?: string; page?: 
     return apiFetch(`/loans${qs ? `?${qs}` : ''}`);
 };
 
-export const apiGetLoanDashboard = () => apiFetch('/loans/dashboard');
+export const apiGetLoanDashboard = (timeframe?: string) => {
+    const qs = timeframe ? `?timeframe=${timeframe}` : '';
+    return apiFetch(`/loans/dashboard${qs}`);
+};
 
 export const apiGetPendingPayments = (status?: string, page?: number, limit?: number) => {
     const query = new URLSearchParams();
@@ -117,6 +147,7 @@ export const apiRecordPayment = (body: {
     loanId: string;
     amount: number;
     interestPortion?: number;
+    principalPortion?: number;
     paymentDate: string;
     mode?: string;
 }) => apiFetch('/payments', { method: 'POST', body: JSON.stringify(body) });
@@ -132,13 +163,67 @@ export const apiGetPayments = (search?: string, page?: number, limit?: number) =
 
 export const apiGetReports = () => apiFetch('/payments/reports');
 
-// ==================== PHONE VERIFICATION (Dial2Verify) ====================
+// ==================== FIREBASE PHONE AUTH ====================
 
-export const apiInitiatePhoneVerify = (phone: string) =>
-    apiFetch('/verify/initiate', { method: 'POST', body: JSON.stringify({ phone }) });
+export const apiFirebasePhoneAuth = (body: {
+    idToken: string;
+    role?: string;
+    name?: string;
+    countryCode?: string;
+}) => apiFetch('/auth/firebase-phone', { method: 'POST', body: JSON.stringify(body) });
 
-export const apiCheckPhoneVerifyStatus = (sessionId: string) =>
-    apiFetch(`/verify/status/${sessionId}`);
+// ==================== FIREBASE GOOGLE AUTH ====================
 
-export const apiSimulatePhoneVerify = (sessionId: string) =>
-    apiFetch(`/verify/simulate/${sessionId}`, { method: 'POST' });
+export const apiFirebaseGoogleAuth = (body: {
+    idToken: string;
+    role?: string;
+}) => apiFetch('/auth/firebase-google', { method: 'POST', body: JSON.stringify(body) });
+
+// ==================== AI ASSISTANT ====================
+
+export const apiSendChatMessage = (message: string) =>
+    apiFetch('/ai/chat', { method: 'POST', body: JSON.stringify({ message }) });
+
+// ==================== REPORTS DOWNLOAD ====================
+
+export const apiDownloadReportPdf = async (): Promise<Blob> => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/reports/pdf`, {
+        headers: {
+            Authorization: token ? `Bearer ${token}` : ''
+        }
+    });
+    if (!response.ok) {
+        if (response.status === 401) {
+            window.dispatchEvent(new CustomEvent('lendwise-auth-expired'));
+        }
+        let msg = 'Failed to download PDF report';
+        try {
+            const data = await response.json();
+            msg = data.message || msg;
+        } catch { /* silent */ }
+        throw new Error(msg);
+    }
+    return response.blob();
+};
+
+export const apiDownloadReportExcel = async (): Promise<Blob> => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/reports/excel`, {
+        headers: {
+            Authorization: token ? `Bearer ${token}` : ''
+        }
+    });
+    if (!response.ok) {
+        if (response.status === 401) {
+            window.dispatchEvent(new CustomEvent('lendwise-auth-expired'));
+        }
+        let msg = 'Failed to download Excel report';
+        try {
+            const data = await response.json();
+            msg = data.message || msg;
+        } catch { /* silent */ }
+        throw new Error(msg);
+    }
+    return response.blob();
+};

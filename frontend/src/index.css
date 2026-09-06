@@ -51,6 +51,30 @@
   --color-accent: #374151;
 }
 
+*.glassmorphism {
+  background: rgba(26, 30, 29, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@keyframes customFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-25px);
+  }
+}
+
+.animate-float {
+  animation: customFloat 3s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: customFloat 3s ease-in-out 1.5s infinite;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -93,6 +117,7 @@ button {
   cursor: pointer;
   border: none;
   outline: none;
+  background-color: transparent;
 }
 
 /* Base Page Animation - Fade In */

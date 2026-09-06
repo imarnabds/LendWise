@@ -11,7 +11,8 @@ interface ToastMessage {
 }
 
 interface ToastContextType {
-    toast: (message: string, type?: ToastType) => void;
+    toast: (msgOrType: string, messageOrType?: string) => void;
+    addToast: (msgOrType: string, messageOrType?: string) => void;
     success: (message: string) => void;
     error: (message: string) => void;
     info: (message: string) => void;
@@ -28,7 +29,16 @@ export const useToast = () => {
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-    const addToast = useCallback((message: string, type: ToastType = 'info') => {
+    const addToast = useCallback((msgOrType: string, messageOrType?: string) => {
+        let type: ToastType = 'info';
+        let message = msgOrType;
+        if (msgOrType === 'success' || msgOrType === 'error' || msgOrType === 'info') {
+            type = msgOrType as ToastType;
+            message = messageOrType || '';
+        } else if (messageOrType === 'success' || messageOrType === 'error' || messageOrType === 'info') {
+            type = messageOrType as ToastType;
+        }
+
         const id = Math.random().toString(36).substr(2, 9);
         setToasts((prev) => [...prev, { id, type, message }]);
 
@@ -39,6 +49,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const toastObj = {
         toast: addToast,
+        addToast,
         success: (msg: string) => addToast(msg, 'success'),
         error: (msg: string) => addToast(msg, 'error'),
         info: (msg: string) => addToast(msg, 'info'),

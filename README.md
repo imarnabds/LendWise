@@ -1,226 +1,167 @@
-# MicroLend — Production-Grade Loan Management API
+# LendWise — Enterprise Loan & Microfinance Platform
 
-A production-ready, full-stack web application for managing loans, borrowers, and payments. Features server-side interest computation, paginated data, real-time analytics, Redis caching, interactive API docs, structured logging, security hardening, Docker containerization, and automated testing.
+LendWise is a full-stack microfinance and peer-to-peer loan management platform. Built with Node.js, Express 5, MongoDB, Redis, and React 18 with TypeScript, LendWise delivers real-time transaction reconciliation, automated interest schedule computation, role-isolated lender and borrower portals, contextual AI risk assistance, and comprehensive financial auditability.
 
 ---
 
-## 🛠️ Technical Stack
+## 🚀 Core Features & Capabilities
+
+* **Role-Isolated Portals**: Dedicated, authorized experiences for Lenders (portfolio management, disbursements, borrower tracking, yield analytics) and Borrowers (active loans, repayment schedules, upcoming dues).
+* **Authoritative Financial Ledger**: Atomic payment recording, dynamic interest calculation (Simple & Compounding), remaining balance tracking, and immutable transaction audit logs.
+* **Concurrent Payment Protection**: Optimistic locking (`__v` versioning) and MongoDB session transactions preventing race conditions or double-charging.
+* **Real-Time Reconciliation**: Socket.IO event broadcasting for instant multi-device balance updates without manual page refreshes.
+* **LendWise AI Assistant**: Contextual AI financial advisor evaluating risk profiles, loan schedule estimations, and borrower inquiries.
+* **PDF & Financial Exports**: Server-side generation of official loan agreement PDFs, payment receipts, and SpreadsheetML executive summary exports.
+* **Performance Caching**: Redis cache-aside caching layer for high-throughput dashboard analytics and payment history queries with automatic write-invalidation.
+* **Production Security**: Hardened JWT authentication, role-based authorization, IP rate limiting, Helmet HTTP security headers, NoSQL injection protection, and environment variable validation.
+
+---
+
+## 🛠️ Technology Stack
 
 ### Backend
 | Technology | Purpose |
 |---|---|
-| **Node.js + Express 5** | RESTful API server |
-| **MongoDB + Mongoose** | Document database with ODM and compound indexes |
-| **Redis (ioredis)** | Cache-aside caching for read-heavy endpoints |
-| **JWT (jsonwebtoken)** | Stateless authentication |
-| **bcryptjs** | Secure password hashing |
-| **Winston** | Structured logging (file + console) |
-| **Morgan** | HTTP request logging (piped to Winston) |
-| **Helmet** | Secure HTTP headers |
-| **express-rate-limit** | Rate limiting (100 req/15min per IP) |
-| **express-mongo-sanitize** | NoSQL injection prevention |
-| **Swagger / OpenAPI 3.0** | Interactive API documentation |
-| **Jest + Supertest** | Automated test suite |
-| **Docker + Compose** | Containerized deployment |
+| **Node.js + Express 5** | Modular RESTful API server using Controller-Service architecture |
+| **MongoDB + Mongoose** | Document database with compound indexing and transactions |
+| **Redis (ioredis)** | Cache-aside performance caching with graceful degradation |
+| **Socket.IO** | Bi-directional real-time event broadcasting |
+| **JWT & bcryptjs** | Role-aware stateless authentication and password hashing |
+| **PDFKit** | Server-side financial agreement & receipt PDF generation |
+| **Winston & Morgan** | Structured JSON logging with multi-level file/console output |
+| **Helmet & Rate-Limit** | Security headers and request rate limiting |
+| **Jest & Supertest** | Comprehensive test suite (134 automated unit/integration tests) |
 
 ### Frontend
 | Technology | Purpose |
 |---|---|
-| **React 18 + TypeScript** | Component-based UI with static typing |
-| **Vite** | Ultra-fast HMR and optimized production builds |
-| **React Router DOM v7** | Nested routing, protected layouts, role-based access |
-| **React Context API** | State management (`AuthProvider`, `LoanProvider`, `ToastProvider`) |
-| **Recharts** | Data visualization for analytics and reports |
-| **Lucide React** | Modern icon library |
-| **i18next** | Multi-language support (English, Bengali) |
+| **React 18 + TypeScript** | Strict typed UI component architecture |
+| **Vite** | Optimized production bundling with vendor chunk splitting |
+| **React Router DOM v7** | Role-aware protected routing and layout navigation |
+| **Recharts** | Interactive financial charts and repayment analytics |
+| **Lucide React** | Modern design icon system |
 
 ---
 
-## ⚙️ Architecture
+## 📂 Repository Architecture
 
-### Controller-Service Pattern
-
-```
-Route → Controller → Service → Model
- │          │            │         │
- │    HTTP concerns   Business   Database
- │    (req/res)       Logic      Schema
- └── 30 lines      └── thin   └── 470+ lines
-```
-
-### Backend Directory Structure
-
-```
-backend/
-├── server.js                    # Express app + middleware stack
-├── config/
-│   └── redis.js                 # Redis client with graceful degradation
-├── controllers/
-│   ├── loanController.js        # Thin HTTP layer
-│   └── paymentController.js
-├── services/
-│   ├── loanService.js           # Interest calc, pagination, filtering, sorting, CRUD
-│   └── paymentService.js        # Payment recording, history, aggregation reports
-├── middleware/
-│   ├── auth.js                  # JWT verification
-│   ├── errorHandler.js          # Centralized error handler (Winston integrated)
-│   ├── rateLimiter.js           # 100 req/15min per IP
-│   └── validate.js              # Query parameter validation & sanitization
-├── validators/
-│   └── loanValidator.js         # Request body validation
-├── models/
-│   ├── User.js                  # Lender/Borrower roles
-│   ├── Loan.js                  # 3 compound indexes
-│   └── Payment.js               # 3 compound indexes
-├── routes/
-│   ├── auth.js, loans.js, payments.js, dial2verify.js
-├── docs/
-│   └── swagger.js               # OpenAPI 3.0 spec
-├── utils/
-│   └── logger.js                # Winston configuration
-├── tests/
-│   ├── setup.js                 # Test DB helpers
-│   ├── auth.test.js             # Auth tests
-│   ├── loans.test.js            # Loan CRUD + pagination tests
-│   └── payments.test.js         # Payment tests
-├── logs/                        # Auto-generated log files
-├── Dockerfile                   # Node 18 Alpine
-└── docker-compose.yml           # App + MongoDB + Redis
+```text
+├── backend/
+│   ├── config/              # Database, Redis, Firebase, Env validation
+│   ├── controllers/         # Thin HTTP request handlers
+│   ├── services/            # Core business logic (loans, payments, reports)
+│   ├── middleware/         # Auth, validation, security, error handling
+│   ├── models/              # User, Loan, Payment, Activity Mongoose schemas
+│   ├── routes/              # Express API route modules
+│   ├── utils/               # Winston logger, PDF generators, socket server
+│   ├── tests/               # Jest test suite (134 passing tests)
+│   ├── Dockerfile           # Multi-stage production container setup
+│   └── reconcile_audit.js   # Read-only financial reconciliation script
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # Modular UI components, Modals, Navbar, Footer
+│   │   ├── context/         # AuthContext, LoanContext, ToastContext
+│   │   ├── pages/           # Landing, Dashboards, Borrower views, Settings, Reports
+│   │   └── services/        # API client and Socket.IO connection manager
+│   ├── Dockerfile           # Production container build
+│   └── nginx.conf           # SPA routing and production HTTP setup
+└── docker-compose.yml       # Production orchestration (App, MongoDB, Redis)
 ```
 
 ---
 
-## 🔧 Production Infrastructure
+## ⚠️ Technical Operational Conditions & Architecture Notes
 
-### 1. Redis Caching
+1. **MongoDB Replica Set for Transactions**:
+   - Multi-document session transactions require a **MongoDB Replica Set** or managed cluster (e.g., MongoDB Atlas).
+   - On standalone MongoDB instances (such as local dev setups), the backend payment service automatically uses atomic single-document `findOneAndUpdate` fallback mode.
 
-Cache-aside strategy with graceful degradation (app works without Redis):
+2. **Socket.IO Horizontal Scaling**:
+   - Socket.IO operates in-memory for single-instance backend deployments.
+   - For multi-instance load-balanced deployments, integrate `@socket.io/redis-adapter` to synchronize real-time socket events across backend nodes.
 
-| Endpoint | TTL | Key Pattern |
-|---|---|---|
-| `GET /api/loans` | 30s | `loans:{lenderId}:p{page}l{limit}...` |
-| `GET /api/loans/dashboard` | 60s | `dashboard:{lenderId}` |
-| `GET /api/payments/reports` | 120s | `reports:{lenderId}` |
+3. **Excel Report Generation**:
+   - Excel export (`/api/reports/excel`) generates Microsoft Office SpreadsheetML (XML format) served with spreadsheet headers.
+   - It is natively recognized and opened by Microsoft Excel and LibreOffice, but uses SpreadsheetML/XML format rather than binary OOXML (`.xlsx`).
 
-Cache is automatically invalidated on write operations (create/update/delete loan, record payment).
+4. **Performance & Build Validation**:
+   - Production validation covers TypeScript compilation, code splitting, vendor chunk optimization, and runtime stability.
+   - High-throughput capacity certification requires environment-specific load testing under synthetic concurrency.
 
-### 2. API Documentation
-
-Interactive Swagger UI at: **`http://localhost:5000/api-docs`**
-
-- OpenAPI 3.0 spec with all endpoints
-- Request/response schemas
-- JWT authentication support
-- Try-it-out functionality
-
-### 3. Structured Logging (Winston)
-
-| Destination | Level | Format |
-|---|---|---|
-| `logs/combined.log` | All | JSON (timestamp, level, message, meta) |
-| `logs/error.log` | Error only | JSON with stack traces |
-| Console | All (dev) | Colorized human-readable |
-
-Logged events: user login, loan creation, payment recording, API errors, DB errors.
-
-### 4. Security Hardening
-
-| Middleware | Purpose |
-|---|---|
-| **Helmet** | Secure HTTP headers (CSP, HSTS, X-Frame-Options, etc.) |
-| **Rate Limiter** | 100 requests / 15 minutes per IP |
-| **Mongo Sanitize** | Strips `$` and `.` from body/query to prevent NoSQL injection |
-| **Body Size Limit** | `express.json({ limit: '10kb' })` |
-| **JWT Auth** | All protected routes require valid Bearer token |
-
-### 5. Docker Deployment
-
-```bash
-# Start all services
-docker-compose up -d
-
-# Stop
-docker-compose down
-```
-
-Services: `microlend-api` (port 5000), `microlend-mongo` (27017), `microlend-redis` (6379)
-
-### 6. Automated Testing
-
-```bash
-npm test
-```
-
-Test suite covers:
-- **Auth**: signup, login, invalid credentials
-- **Loans**: create, paginate, filter, sort, detail, soft-delete, borrower history
-- **Payments**: record, paginated history, analytics reports
+5. **Accepted Residual Dependency Risks**:
+   - Transitive `uuid` dependencies within `firebase-admin` contain 8 moderate `npm audit` flags.
+   - These are retained as accepted residual risk to avoid breaking changes in the Firebase Admin SDK.
 
 ---
 
-## 📡 API Endpoints
+## ⚙️ Environment Configuration
 
-### Authentication (`/api/auth`)
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/auth/signup` | Register (with phone verification) |
-| POST | `/api/auth/login` | Login (returns JWT) |
-| PUT | `/api/auth/profile` | Update user profile |
+Copy `backend/.env.example` to `backend/.env` and configure your settings:
 
-### Loans (`/api/loans`)
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/loans` | Create a new loan |
-| GET | `/api/loans?page=1&limit=20&sortBy=createdAt&order=desc&status=Active` | Paginated, filtered, sorted loans with computed interest |
-| GET | `/api/loans/dashboard` | Aggregated dashboard stats |
-| GET | `/api/loans/pending` | Pending/overdue payments |
-| GET | `/api/loans/borrower-history` | Soft-deleted borrowers |
-| GET | `/api/loans/:id` | Single loan detail |
-| PUT | `/api/loans/:id` | Update loan |
-| DELETE | `/api/loans/:id` | Soft-delete loan |
-
-### Payments (`/api/payments`)
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/payments` | Record a payment |
-| GET | `/api/payments?page=1&limit=20` | Paginated payment history |
-| GET | `/api/payments/reports` | Revenue analytics |
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- **Node.js** v18+
-- **MongoDB** (local or Atlas)
-- **Redis** (optional — app works without it)
-
-### Local Setup
-```bash
-# Backend
-cd backend
-npm install
-cp .env.example .env    # Configure MONGO_URI, JWT_SECRET
-npm run dev              # → http://localhost:5000
-
-# Frontend
-cd frontend
-npm install
-npm run dev              # → http://localhost:5173
-```
-
-### Docker Setup
-```bash
-cd backend
-docker-compose up -d     # Starts app + MongoDB + Redis
-```
-
-### Environment Variables
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/microlend
-JWT_SECRET=your_secret_key
-REDIS_URL=redis://127.0.0.1:6379
 NODE_ENV=development
-LOG_LEVEL=info
+MONGO_URI=mongodb://localhost:27017/lendwise
+JWT_SECRET=your_super_strong_production_secret_at_least_32_chars
+REDIS_URL=redis://127.0.0.1:6379
+CORS_ORIGIN=http://localhost:5173
+```
+
+---
+
+## 🚦 Getting Started
+
+### Local Development
+
+1. **Start Backend**:
+   ```bash
+   cd backend
+   npm install
+   npm run dev
+   ```
+
+2. **Start Frontend**:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+3. **Run Automated Test Suite**:
+   ```bash
+   cd backend
+   npm test
+   ```
+
+4. **Run Read-Only Financial Reconciliation Audit**:
+   ```bash
+   cd backend
+   node reconcile_audit.js
+   ```
+
+### Docker Deployment
+
+To launch the complete production stack (Backend API, Frontend Nginx SPA, MongoDB, Redis):
+
+```bash
+docker-compose up -d --build
+```
+
+---
+
+## 🛡️ Database Disaster Recovery Runbook
+
+### Database Hot Backup (`mongodump`)
+```bash
+mongodump --uri="mongodb://localhost:27017/lendwise" --out=/backups/lendwise_$(date +%Y%m%d_%H%M%S) --gzip
+```
+
+### Database Restore Procedure (`mongorestore`)
+```bash
+mongorestore --uri="mongodb://localhost:27017/lendwise" --dir=/backups/lendwise_YYYYMMDD_HHMMSS/lendwise --drop --gzip
+```
+
+### Post-Restore Verification
+```bash
+cd backend && node reconcile_audit.js
 ```

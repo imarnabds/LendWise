@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # ── Backend API ──────────────────────────────────────────────
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lendwise-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/lendwise
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - FIREBASE_SERVICE_ACCOUNT_PATH=/app/config/firebase-service-account.json
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lendwise-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); });"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  # ── Frontend Static Server ───────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lendwise-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - lendwise-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── MongoDB ──────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: lendwise-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    networks:
+      - lendwise-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 10s
+      start_period: 20s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: lendwise-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis-data:/data
+    networks:
+      - lendwise-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-data:
+    driver: local
+  mongo-config:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  lendwise-network:
+    driver: bridge

@@ -1,352 +1,366 @@
 .formContainer {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-text: #f0f0f0;
+  --glass-muted: #888888;
+  --glass-input: #1a1a1a;
+  --glass-green: #00ff88;
+
+  /* Overrides for reusable global components (like Input.tsx) rendered inside this container */
+  --color-text-main: #ffffff;
+  --color-text-muted: #a0a0a0;
+  --color-surface: rgba(255, 255, 255, 0.05);
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-primary: var(--glass-green);
+
+  width: 100%;
+  max-width: 440px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.5rem 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+  color: var(--glass-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Override input sizes inside formContainer to be very compact */
+.formContainer label {
+    font-size: 0.65rem !important;
+    margin-bottom: 2px !important;
+}
+
+.formContainer input {
+    font-size: 0.75rem !important;
+    padding: 0.4rem 0.6rem !important;
+    border-radius: 6px !important;
+}
+
+.formContainer select {
+    font-size: 0.75rem !important;
+    padding: 0.4rem 0.6rem !important;
+    border-radius: 6px !important;
+}
+
+.formContainer > .form > div {
+    margin-bottom: 0.4rem !important;
+}
+
+/* Bright green top-left glow inside the card */
+.formContainer::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  left: -60px;
+  width: 150px;
+  height: 150px;
+  background: var(--glass-green);
+  filter: blur(80px);
+  border-radius: 50%;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.contentWrapper {
+  position: relative;
+  z-index: 1;
 }
 
 .header {
-    margin-bottom: 2rem;
-    text-align: center;
+  text-align: center;
+  margin-bottom: 2rem;
 }
 
 .title {
-    font-family: var(--font-family-heading);
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--color-text-main);
-    margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.5px;
 }
 
 .subtitle {
-    color: var(--color-text-muted);
-    font-size: 0.95rem;
+  color: var(--glass-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
 }
 
 .form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
+/* Modifier for Signup container width to hold grid */
+.signupMaxWidth {
+  max-width: 440px;
+}
+
+
+/* ── Inline Input + Button Combination ───────────────── */
 .inputGroup {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 1rem;
+  position: relative;
 }
 
-.label {
-    font-family: var(--font-family-sans);
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--color-text-main);
-    margin-bottom: 0.5rem;
+.inputLabel {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--glass-muted);
+  margin-bottom: 0.5rem;
+  margin-left: 0.5rem;
 }
 
-.select {
-    font-family: inherit;
-    font-size: 1rem;
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-border);
-    background-color: var(--color-surface);
-    color: var(--color-text-main);
-    transition: var(--transition-normal);
-    outline: none;
-    width: 100%;
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 1rem center;
-    background-size: 1em;
+.inputFieldWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.select:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(5, 223, 114, 0.15);
+.inputField {
+  width: 100%;
+  background: var(--glass-input);
+  border: 1px solid transparent;
+  border-radius: 50px;
+  padding: 1rem 3.5rem 1rem 1.25rem;
+  color: var(--glass-text);
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.3s ease;
 }
 
-.submitBtn {
-    margin-top: 1rem;
+.inputField:focus {
+  border-color: rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.1);
 }
 
+.inputField::placeholder {
+  color: #555555;
+}
+
+.inlineSubmitBtn {
+  position: absolute;
+  right: 6px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--glass-green);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+  transition: all 0.3s ease;
+}
+
+.inlineSubmitBtn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+}
+
+.inlineSubmitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ── OR Separator ────────────────────────────────────── */
+.separator {
+  position: relative;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: #444444;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+
+.separator::before,
+.separator::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 35%;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+.separator::before {
+  left: 5%;
+}
+
+.separator::after {
+  right: 5%;
+}
+
+/* ── Social Buttons ──────────────────────────────────── */
+.socialBtns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.socialBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--glass-input);
+  border: 1px solid transparent;
+  border-radius: 50px;
+  padding: 0.85rem 1.25rem;
+  color: var(--glass-text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.socialBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.socialIconWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.socialArrow {
+  color: #555555;
+  transition: color 0.3s ease;
+}
+
+.socialBtn:hover .socialArrow {
+  color: var(--glass-text);
+  transform: translateX(2px);
+}
+
+/* Google-specific button variant */
+.googleBtn {
+  composes: socialBtn;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.googleBtn:hover {
+  border-color: rgba(66, 133, 244, 0.4);
+  box-shadow: 0 0 20px rgba(66, 133, 244, 0.1);
+}
+
+.googleBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Footer Link ─────────────────────────────────────── */
 .footerText {
-    margin-top: 2rem;
-    text-align: center;
-    font-size: 0.95rem;
-    color: var(--color-text-muted);
+  text-align: center;
+  margin-top: 2.5rem;
+  font-size: 0.8rem;
+  color: var(--glass-muted);
 }
 
 .link {
-    color: var(--color-primary);
-    font-weight: 600;
-    text-decoration: none;
-    transition: var(--transition-fast);
+  color: var(--glass-green);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .link:hover {
-    color: var(--color-primary-dark);
+  text-decoration: underline;
 }
 
-.otpContainer {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 2rem;
-}
-
-.otpInput {
-    width: 3rem;
-    height: 3.5rem;
-    font-size: 1.5rem;
-    text-align: center;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-border);
-    background-color: var(--color-surface);
-    color: var(--color-text-main);
-    font-weight: 600;
-    transition: var(--transition-normal);
-}
-
-.otpInput:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(5, 223, 114, 0.15);
-    outline: none;
-}
-
-/* ===== Phone Verification ===== */
+/* ── Existing utility classes needed for Signup fallback ─ */
 .phoneVerifyGroup {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0;
+  background: rgba(0,0,0,0.2);
 }
 
 .phoneInputRow {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
 }
 
 .verifyBtn {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.7rem 1rem;
-    border: 2px solid var(--color-primary);
-    background: transparent;
-    color: var(--color-primary);
-    font-weight: 600;
-    font-size: 0.875rem;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: var(--transition-fast);
-    white-space: nowrap;
-    margin-bottom: 0.05rem;
-}
-
-.verifyBtn:hover:not(:disabled) {
-    background: var(--color-primary);
-    color: #fff;
-}
-
-.verifyBtn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  background: var(--glass-green);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 0 0.75rem;
+  height: 40px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .verifiedBadge {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.65rem 0.85rem;
-    background: rgba(5, 223, 114, 0.12);
-    color: #04b85d;
-    font-weight: 600;
-    font-size: 0.875rem;
-    border-radius: var(--radius-sm);
-    white-space: nowrap;
-    margin-bottom: 0.05rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--glass-green);
+  padding: 0 0.5rem;
+  height: 40px;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .missedCallPanel {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 0.75rem;
-    padding: 1rem 1.25rem;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(5, 223, 114, 0.08));
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    animation: fadeSlideIn 0.3s ease;
-}
-
-@keyframes fadeSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.missedCallIcon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: rgba(59, 130, 246, 0.12);
-    color: #3b82f6;
-    flex-shrink: 0;
-}
-
-.ringingIcon {
-    animation: ring 1.2s ease-in-out infinite;
-}
-
-@keyframes ring {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    10% {
-        transform: rotate(15deg);
-    }
-
-    20% {
-        transform: rotate(-12deg);
-    }
-
-    30% {
-        transform: rotate(10deg);
-    }
-
-    40% {
-        transform: rotate(-8deg);
-    }
-
-    50% {
-        transform: rotate(5deg);
-    }
-
-    60% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-.missedCallContent {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.missedCallTitle {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--color-text-main);
-    margin: 0;
-}
-
-.missedCallNumber {
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: #3b82f6;
-    text-decoration: none;
-    letter-spacing: 0.5px;
-}
-
-.missedCallNumber:hover {
-    text-decoration: underline;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  text-align: center;
+  color: var(--glass-text);
 }
 
 .callActionBtn {
-    display: inline-block;
-    padding: 0.6rem 1.25rem;
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-    text-align: center;
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  margin: 1rem 0;
+  cursor: pointer;
+  width: 100%;
 }
 
-.callActionBtn:hover {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0;
 }
 
-.missedCallHint {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    margin: 0;
+.label {
+  font-size: 0.7rem;
+  color: var(--glass-muted);
+  margin-left: 0.25rem;
 }
 
-.missedCallTimer {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8rem;
-    color: var(--color-primary);
-    font-weight: 500;
-    margin-top: 0.25rem;
-}
-
-.missedCallStatus {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8rem;
-    color: var(--color-primary);
-    font-weight: 500;
-    margin-top: 0.25rem;
-}
-
-.callWarning {
-    color: #f59e0b;
-    font-weight: 600;
-}
-
-.spinIcon {
-    animation: spin 1.5s linear infinite;
-}
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.confirmCallBtn {
-    margin-top: 0.5rem;
-    padding: 0.5rem 1.15rem;
-    background: var(--color-primary);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.confirmCallBtn:hover {
-    background: var(--color-primary-dark);
-    transform: translateY(-1px);
+.select {
+  background: var(--glass-input);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: var(--glass-text);
+  font-size: 0.85rem;
+  outline: none;
 }

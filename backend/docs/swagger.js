@@ -1,5 +1,5 @@
 /**
- * Swagger / OpenAPI 3.0 configuration for MicroLend API.
+ * Swagger / OpenAPI 3.0 configuration for LendWise API.
  */
 
 const swaggerJsdoc = require('swagger-jsdoc');
@@ -8,10 +8,10 @@ const options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'MicroLend API',
+            title: 'LendWise API',
             version: '1.0.0',
-            description: 'Production-grade REST API for the MicroLend loan management system. Supports server-side pagination, filtering, sorting, and interest computation.',
-            contact: { name: 'MicroLend Team' }
+            description: 'Production-grade REST API for the LendWise loan management platform. Supports server-side pagination, filtering, sorting, APR simple interest computation, and resource-level authorization.',
+            contact: { name: 'LendWise Team' }
         },
         servers: [
             { url: 'http://localhost:5000', description: 'Development' }
@@ -21,10 +21,21 @@ const options = {
                 bearerAuth: {
                     type: 'http',
                     scheme: 'bearer',
-                    bearerFormat: 'JWT'
+                    bearerFormat: 'JWT',
+                    description: 'Enter your Bearer token issued upon login or signup.'
                 }
             },
             schemas: {
+                User: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string', example: '65f123456789abcdef012345' },
+                        name: { type: 'string', example: 'Jane Doe' },
+                        phone: { type: 'string', example: '9876543210' },
+                        email: { type: 'string', example: 'jane@example.com' },
+                        role: { type: 'string', enum: ['LENDER', 'BORROWER'] }
+                    }
+                },
                 Pagination: {
                     type: 'object',
                     properties: {
@@ -38,14 +49,20 @@ const options = {
                     type: 'object',
                     properties: {
                         loanId: { type: 'string' },
+                        lenderId: { type: 'string' },
+                        borrowerId: { type: 'string' },
                         borrowerName: { type: 'string', example: 'John Doe' },
-                        principal: { type: 'number', example: 100000 },
-                        interestRate: { type: 'number', example: 3 },
+                        borrowerPhone: { type: 'string', example: '9876543210' },
+                        principal: { type: 'number', example: 50000 },
+                        interestRate: { type: 'number', example: 12 },
+                        durationMonths: { type: 'integer', example: 12 },
                         status: { type: 'string', enum: ['Active', 'Overdue', 'Closed', 'Deleted'] },
-                        monthlyInterest: { type: 'number', example: 3000 },
-                        totalPayable: { type: 'number', example: 136000 },
-                        pendingInterest: { type: 'number', example: 6000 },
-                        remainingBalance: { type: 'number', example: 95000 }
+                        monthlyInterest: { type: 'number', example: 500 },
+                        totalInterest: { type: 'number', example: 6000 },
+                        totalPayable: { type: 'number', example: 56000 },
+                        amountPaid: { type: 'number', example: 0 },
+                        remainingBalance: { type: 'number', example: 56000 },
+                        emi: { type: 'number', example: 4666.67 }
                     }
                 },
                 Payment: {
@@ -82,7 +99,7 @@ const options = {
             '/api/auth/signup': {
                 post: {
                     tags: ['Authentication'],
-                    summary: 'Register a new user',
+                    summary: 'Register a new user account',
                     requestBody: {
                         required: true,
                         content: {
@@ -91,11 +108,11 @@ const options = {
                                     type: 'object',
                                     required: ['name', 'phone', 'password', 'role'],
                                     properties: {
-                                        name: { type: 'string', example: 'John Doe' },
+                                        name: { type: 'string', example: 'Jane Doe' },
                                         phone: { type: 'string', example: '9876543210' },
-                                        email: { type: 'string', example: 'john@example.com' },
-                                        password: { type: 'string', example: 'secret123' },
-                                        role: { type: 'string', enum: ['lender', 'borrower'] }
+                                        email: { type: 'string', example: 'jane@example.com' },
+                                        password: { type: 'string', example: 'securepassword123' },
+                                        role: { type: 'string', enum: ['LENDER', 'BORROWER'], example: 'LENDER' }
                                     }
                                 }
                             }
@@ -103,14 +120,15 @@ const options = {
                     },
                     responses: {
                         '201': { description: 'User registered successfully' },
-                        '400': { description: 'Validation error' }
+                        '400': { description: 'Validation error (invalid role or missing required field)' },
+                        '409': { description: 'Conflict: User with this phone/email already exists' }
                     }
                 }
             },
             '/api/auth/login': {
                 post: {
                     tags: ['Authentication'],
-                    summary: 'Login and get JWT token',
+                    summary: 'Login and receive JWT token',
                     requestBody: {
                         required: true,
                         content: {
@@ -120,7 +138,7 @@ const options = {
                                     required: ['mobileOrEmail', 'password'],
                                     properties: {
                                         mobileOrEmail: { type: 'string', example: '9876543210' },
-                                        password: { type: 'string', example: 'secret123' }
+                                        password: { type: 'string', example: 'securepassword123' }
                                     }
                                 }
                             }
@@ -134,20 +152,31 @@ const options = {
                                         type: 'object',
                                         properties: {
                                             token: { type: 'string' },
-                                            user: { type: 'object' }
+                                            user: { $ref: '#/components/schemas/User' }
                                         }
                                     }
                                 }
                             }
                         },
-                        '400': { description: 'Invalid credentials' }
+                        '401': { description: 'Invalid credentials' }
+                    }
+                }
+            },
+            '/api/auth/me': {
+                get: {
+                    tags: ['Authentication'],
+                    summary: 'Get current authenticated user profile',
+                    security: [{ bearerAuth: [] }],
+                    responses: {
+                        '200': { description: 'User profile data' },
+                        '401': { description: 'Unauthorized' }
                     }
                 }
             },
             '/api/auth/profile': {
                 put: {
                     tags: ['Authentication'],
-                    summary: 'Update user profile',
+                    summary: 'Update user profile (allowed fields: name, email, phone, address)',
                     security: [{ bearerAuth: [] }],
                     requestBody: {
                         content: {
@@ -157,6 +186,7 @@ const options = {
                                     properties: {
                                         name: { type: 'string' },
                                         email: { type: 'string' },
+                                        phone: { type: 'string' },
                                         address: { type: 'string' }
                                     }
                                 }
@@ -169,43 +199,10 @@ const options = {
                     }
                 }
             },
-
-            // ── Loans ────────────────────────────────────────────
-            '/api/loans': {
-                get: {
-                    tags: ['Loans'],
-                    summary: 'Get paginated, filtered, sorted loans with computed interest',
-                    security: [{ bearerAuth: [] }],
-                    parameters: [
-                        { $ref: '#/components/parameters/Page' },
-                        { $ref: '#/components/parameters/Limit' },
-                        { $ref: '#/components/parameters/SortBy' },
-                        { $ref: '#/components/parameters/Order' },
-                        { $ref: '#/components/parameters/Status' },
-                        { $ref: '#/components/parameters/Search' },
-                        { in: 'query', name: 'startDate', schema: { type: 'string', format: 'date' } },
-                        { in: 'query', name: 'endDate', schema: { type: 'string', format: 'date' } }
-                    ],
-                    responses: {
-                        '200': {
-                            description: 'Paginated loan list', content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            data: { type: 'array', items: { $ref: '#/components/schemas/Loan' } },
-                                            pagination: { $ref: '#/components/schemas/Pagination' }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        '401': { description: 'Unauthorized' }
-                    }
-                },
-                post: {
-                    tags: ['Loans'],
-                    summary: 'Create a new loan (Add Borrower)',
+            '/api/auth/password': {
+                put: {
+                    tags: ['Authentication'],
+                    summary: 'Change password',
                     security: [{ bearerAuth: [] }],
                     requestBody: {
                         required: true,
@@ -213,17 +210,61 @@ const options = {
                             'application/json': {
                                 schema: {
                                     type: 'object',
-                                    required: ['borrowerName', 'borrowerPhone', 'principalAmount', 'interestRate', 'startDate', 'durationMonths'],
+                                    required: ['currentPassword', 'newPassword'],
                                     properties: {
+                                        currentPassword: { type: 'string' },
+                                        newPassword: { type: 'string', minLength: 8 }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        '200': { description: 'Password changed successfully' },
+                        '400': { description: 'Incorrect current password or weak new password' },
+                        '401': { description: 'Unauthorized' }
+                    }
+                }
+            },
+
+            // ── Loans ────────────────────────────────────────────
+            '/api/loans': {
+                get: {
+                    tags: ['Loans'],
+                    summary: 'Get paginated loans (scoped to authenticated Lender or Borrower)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { $ref: '#/components/parameters/Page' },
+                        { $ref: '#/components/parameters/Limit' },
+                        { $ref: '#/components/parameters/SortBy' },
+                        { $ref: '#/components/parameters/Order' },
+                        { $ref: '#/components/parameters/Status' },
+                        { $ref: '#/components/parameters/Search' }
+                    ],
+                    responses: {
+                        '200': { description: 'Paginated loan list' },
+                        '401': { description: 'Unauthorized' }
+                    }
+                },
+                post: {
+                    tags: ['Loans'],
+                    summary: 'Create a new loan (Requires existing Borrower user)',
+                    security: [{ bearerAuth: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['borrowerPhone', 'principalAmount', 'interestRate', 'startDate', 'durationMonths'],
+                                    properties: {
+                                        borrowerId: { type: 'string' },
                                         borrowerName: { type: 'string', example: 'Jane Smith' },
                                         borrowerPhone: { type: 'string', example: '8888888888' },
-                                        borrowerAddress: { type: 'string' },
-                                        principalAmount: { type: 'number', example: 100000 },
-                                        interestRate: { type: 'number', example: 3 },
-                                        startDate: { type: 'string', format: 'date', example: '2025-01-15' },
-                                        durationMonths: { type: 'integer', example: 12 },
-                                        collateral: { type: 'string' },
-                                        notes: { type: 'string' }
+                                        principalAmount: { type: 'number', example: 50000 },
+                                        interestRate: { type: 'number', example: 12 },
+                                        startDate: { type: 'string', format: 'date', example: '2026-01-01' },
+                                        durationMonths: { type: 'integer', example: 12 }
                                     }
                                 }
                             }
@@ -231,118 +272,63 @@ const options = {
                     },
                     responses: {
                         '201': { description: 'Loan created' },
-                        '400': { description: 'Validation error' }
-                    }
-                }
-            },
-            '/api/loans/dashboard': {
-                get: {
-                    tags: ['Loans'],
-                    summary: 'Aggregated dashboard statistics',
-                    security: [{ bearerAuth: [] }],
-                    responses: {
-                        '200': {
-                            description: 'Dashboard stats', content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            totalBorrowers: { type: 'integer' },
-                                            totalAmountLent: { type: 'number' },
-                                            monthlyInterest: { type: 'number' },
-                                            pendingPayments: { type: 'integer' },
-                                            overdueAccounts: { type: 'integer' },
-                                            loanPortfolio: { type: 'array', items: { type: 'object' } },
-                                            incomeData: { type: 'array', items: { type: 'object' } }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            '/api/loans/pending': {
-                get: {
-                    tags: ['Loans'],
-                    summary: 'Pending/overdue payments (paginated)',
-                    security: [{ bearerAuth: [] }],
-                    parameters: [
-                        { $ref: '#/components/parameters/Page' },
-                        { $ref: '#/components/parameters/Limit' },
-                        { $ref: '#/components/parameters/Status' }
-                    ],
-                    responses: {
-                        '200': { description: 'Pending payments list with pagination' }
-                    }
-                }
-            },
-            '/api/loans/borrower-history': {
-                get: {
-                    tags: ['Loans'],
-                    summary: 'Soft-deleted borrowers history (paginated)',
-                    security: [{ bearerAuth: [] }],
-                    parameters: [
-                        { $ref: '#/components/parameters/Page' },
-                        { $ref: '#/components/parameters/Limit' }
-                    ],
-                    responses: {
-                        '200': { description: 'Borrower history with pagination' }
+                        '404': { description: 'Borrower user not found' }
                     }
                 }
             },
             '/api/loans/{id}': {
                 get: {
                     tags: ['Loans'],
-                    summary: 'Get single loan detail with interest fields',
+                    summary: 'Get single loan detail (Authorized for Lender or Borrower)',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string' } }],
                     responses: {
                         '200': { description: 'Loan detail' },
+                        '403': { description: 'Forbidden — Not a party to this loan' },
                         '404': { description: 'Not found' }
                     }
                 },
                 put: {
                     tags: ['Loans'],
-                    summary: 'Update a loan',
+                    summary: 'Update loan metadata (Lender Only)',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string' } }],
-                    requestBody: {
-                        content: {
-                            'application/json': {
-                                schema: {
-                                    type: 'object',
-                                    properties: {
-                                        status: { type: 'string' },
-                                        principalAmount: { type: 'number' },
-                                        interestRate: { type: 'number' }
-                                    }
-                                }
-                            }
-                        }
-                    },
                     responses: {
                         '200': { description: 'Loan updated' },
-                        '404': { description: 'Not found' }
+                        '403': { description: 'Forbidden — Borrower cannot update metadata' }
                     }
                 },
                 delete: {
                     tags: ['Loans'],
-                    summary: 'Soft-delete a loan',
+                    summary: 'Soft-delete loan (Lender Only)',
                     security: [{ bearerAuth: [] }],
                     parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string' } }],
                     responses: {
                         '200': { description: 'Loan soft-deleted' },
-                        '404': { description: 'Not found' }
+                        '403': { description: 'Forbidden — Borrower cannot delete loan' }
                     }
                 }
             },
 
             // ── Payments ─────────────────────────────────────────
             '/api/payments': {
+                get: {
+                    tags: ['Payments'],
+                    summary: 'Get paginated payment history (Scoped to authenticated Lender or Borrower)',
+                    security: [{ bearerAuth: [] }],
+                    parameters: [
+                        { $ref: '#/components/parameters/Page' },
+                        { $ref: '#/components/parameters/Limit' },
+                        { $ref: '#/components/parameters/Search' }
+                    ],
+                    responses: {
+                        '200': { description: 'Paginated payment list' },
+                        '401': { description: 'Unauthorized' }
+                    }
+                },
                 post: {
                     tags: ['Payments'],
-                    summary: 'Record a payment',
+                    summary: 'Record a payment (Authorized for Lender or Borrower of loan)',
                     security: [{ bearerAuth: [] }],
                     requestBody: {
                         required: true,
@@ -354,71 +340,38 @@ const options = {
                                     properties: {
                                         loanId: { type: 'string' },
                                         amount: { type: 'number', example: 5000 },
-                                        interestPortion: { type: 'number', example: 3000 },
+                                        principalPortion: { type: 'number', example: 4000 },
+                                        interestPortion: { type: 'number', example: 1000 },
                                         paymentDate: { type: 'string', format: 'date' },
-                                        mode: { type: 'string', enum: ['Cash', 'UPI', 'Bank Transfer'], default: 'Cash' }
+                                        mode: { type: 'string', enum: ['Cash', 'UPI', 'Bank Transfer', 'Cheque'], default: 'Cash' }
                                     }
                                 }
                             }
                         }
                     },
                     responses: {
-                        '201': { description: 'Payment recorded' },
-                        '400': { description: 'Validation error' }
-                    }
-                },
-                get: {
-                    tags: ['Payments'],
-                    summary: 'Paginated payment history',
-                    security: [{ bearerAuth: [] }],
-                    parameters: [
-                        { $ref: '#/components/parameters/Page' },
-                        { $ref: '#/components/parameters/Limit' },
-                        { $ref: '#/components/parameters/Search' }
-                    ],
-                    responses: {
-                        '200': {
-                            description: 'Payment list with pagination', content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            payments: { type: 'array', items: { $ref: '#/components/schemas/Payment' } },
-                                            pagination: { $ref: '#/components/schemas/Pagination' }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        '201': { description: 'Payment recorded successfully' },
+                        '400': { description: 'Overpayment, allocation mismatch, or deleted/closed loan error' },
+                        '403': { description: 'Forbidden — Not a party to this loan' }
                     }
                 }
             },
-            '/api/payments/reports': {
+            '/api/payments/{id}': {
                 get: {
                     tags: ['Payments'],
-                    summary: 'Revenue analytics & reports (aggregation pipeline)',
+                    summary: 'Get single payment detail (Authorized for Lender or Borrower of associated loan)',
                     security: [{ bearerAuth: [] }],
+                    parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string' } }],
                     responses: {
-                        '200': {
-                            description: 'Analytics data', content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            revenueTrend: { type: 'array', items: { type: 'object' } },
-                                            paymentConsistency: { type: 'array', items: { type: 'object' } },
-                                            recentTransactions: { type: 'array', items: { type: 'object' } }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        '200': { description: 'Payment detail' },
+                        '403': { description: 'Forbidden — Not a party to the loan associated with this payment' },
+                        '404': { description: 'Payment or associated loan not found' }
                     }
                 }
             }
         }
     },
-    apis: [] // We define paths inline above
+    apis: []
 };
 
 const swaggerSpec = swaggerJsdoc(options);

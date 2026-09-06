@@ -15,12 +15,14 @@ import {
 import { Card } from '../../components/Card';
 import { useTranslation } from 'react-i18next';
 import { apiGetLoanDashboard } from '../../api';
+import { onPaymentCreated } from '../../services/socket';
 import styles from './LenderDashboard.module.css';
 
 const COLORS = ['#05DF72', '#E5E7EB', '#EF4444'];
 
 export const LenderDashboard: React.FC = () => {
     const { t } = useTranslation();
+    const [timeframe, setTimeframe] = useState('monthly');
 
     const [stats, setStats] = useState({
         totalBorrowers: 0,
@@ -33,20 +35,33 @@ export const LenderDashboard: React.FC = () => {
     });
 
     useEffect(() => {
-        apiGetLoanDashboard()
-            .then(data => {
-                setStats({
-                    totalBorrowers: data.totalBorrowers || 0,
-                    totalAmountLent: data.totalAmountLent || 0,
-                    monthlyInterest: data.monthlyInterest || 0,
-                    pendingPayments: data.pendingPayments || 0,
-                    overdueAccounts: data.overdueAccounts || 0,
-                    loanPortfolio: data.loanPortfolio || [],
-                    incomeData: data.incomeData || []
-                });
-            })
-            .catch(() => { /* silently fail for now */ });
-    }, []);
+        const fetchDashboard = () => {
+            apiGetLoanDashboard(timeframe)
+                .then(data => {
+                    setStats({
+                        totalBorrowers: data.totalBorrowers || 0,
+                        totalAmountLent: data.totalAmountLent || 0,
+                        monthlyInterest: data.monthlyInterest || 0,
+                        pendingPayments: data.pendingPayments || 0,
+                        overdueAccounts: data.overdueAccounts || 0,
+                        loanPortfolio: data.loanPortfolio || [],
+                        incomeData: data.incomeData || []
+                    });
+                })
+                .catch(() => { /* silently fail */ });
+        };
+
+        fetchDashboard();
+
+        // Subscribe to real-time payment events to update stats
+        const unsubscribe = onPaymentCreated(() => {
+            fetchDashboard();
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [timeframe]);
 
     const translatedPortfolio = stats.loanPortfolio.map(item => ({
         ...item,
@@ -112,7 +127,27 @@ export const LenderDashboard: React.FC = () => {
 
             {/* Charts Section */}
             <div className={styles.chartsGrid}>
-                <Card title={t('dashboard.monthlyIncomeOverview')} className={styles.chartCard}>
+                <Card
+                    title={
+                        timeframe === 'daily' ? 'Daily Income Overview' :
+                        timeframe === 'weekly' ? 'Weekly Income Overview' :
+                        timeframe === 'yearly' ? 'Yearly Income Overview' :
+                        t('dashboard.monthlyIncomeOverview')
+                    }
+                    className={styles.chartCard}
+                    actions={
+                        <select
+                            className={styles.timeframeSelect}
+                            value={timeframe}
+                            onChange={(e) => setTimeframe(e.target.value)}
+                        >
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    }
+                >
                     <div className={styles.chartContainer}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={stats.incomeData}>

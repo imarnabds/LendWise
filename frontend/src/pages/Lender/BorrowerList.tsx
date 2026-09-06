@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { apiGetLoans, apiDeleteLoan, apiUpdateLoan, apiRecordPayment } from '../../api';
+import { onPaymentCreated } from '../../services/socket';
 import styles from './BorrowerList.module.css';
 
 interface Borrower {
@@ -65,6 +66,14 @@ export const BorrowerList: React.FC = () => {
 
     useEffect(() => {
         fetchLoans();
+
+        const unsubscribe = onPaymentCreated(() => {
+            fetchLoans();
+        });
+
+        return () => {
+            unsubscribe();
+        };
     }, [searchTerm, statusFilter, currentPage]);
 
     const getStatusClass = (status: string) => {

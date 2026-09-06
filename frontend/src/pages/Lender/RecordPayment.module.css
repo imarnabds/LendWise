@@ -194,3 +194,55 @@
     align-items: center;
     gap: 0.5rem;
 }
+
+/* ── Principal Repayment Section ──────────────────────────── */
+.principalToggleRow {
+    margin-bottom: 1rem;
+}
+
+.principalToggleBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: transparent;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 1rem;
+    color: var(--color-primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.principalToggleBtn:hover {
+    background: rgba(5, 223, 114, 0.06);
+    border-color: var(--color-primary);
+}
+
+.principalToggleIcon {
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.principalBox {
+    background: rgba(5, 223, 114, 0.04);
+    border: 1px solid rgba(5, 223, 114, 0.25);
+    border-radius: var(--radius-sm);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.principalNote {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+}

@@ -12,9 +12,11 @@ router.use(auth);
 // POST /api/payments          — Record a payment
 // GET  /api/payments          — Paginated payment history
 // GET  /api/payments/reports  — Revenue & analytics
+// GET  /api/payments/:id      — Single payment detail (Authorized for Lender/Borrower of Loan)
 
 router.post('/', paymentController.recordPayment);
 router.get('/', validatePaymentQuery, paymentController.getPayments);
 router.get('/reports', paymentController.getReports);
+router.get('/:id', paymentController.getPaymentById);
 
 module.exports = router;

@@ -1,27 +1,52 @@
+/**
+ * Payment Model — Transaction Record & Audit Trail
+ *
+ * Historical Snapshot Policy:
+ * `borrowerName` is captured at transaction time as a historical snapshot.
+ * `lenderId`, `borrowerId`, and `loanId` are required relational references to User and Loan models.
+ */
+
 const mongoose = require('mongoose');
+const { roundMoney } = require('../utils/money');
 
 const paymentSchema = new mongoose.Schema({
-    loan: {
+    loanId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Loan',
         required: true
     },
-    lender: {
+    lenderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
+    borrowerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    // Historical Snapshot Field
     borrowerName: {
         type: String,
         required: true
     },
     amount: {
         type: Number,
-        required: true
+        required: true,
+        get: v => roundMoney(v),
+        set: v => roundMoney(v)
     },
     interestPortion: {
         type: Number,
-        default: 0
+        default: 0,
+        get: v => roundMoney(v),
+        set: v => roundMoney(v)
+    },
+    principalPortion: {
+        type: Number,
+        default: 0,
+        get: v => roundMoney(v),
+        set: v => roundMoney(v)
     },
     paymentDate: {
         type: Date,
@@ -43,17 +68,20 @@ const paymentSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['EMI Payment', 'Principal', 'Late Fee'],
+        enum: ['EMI Payment', 'Principal', 'Late Fee', 'Principal + Interest'],
         default: 'EMI Payment'
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true }
 });
 
 // ── Indexes for scalable queries ──────────────────────────
-paymentSchema.index({ lender: 1, paymentDate: -1 });            // payment history
-paymentSchema.index({ loan: 1, paymentDate: -1 });              // per-loan lookups
-paymentSchema.index({ lender: 1, status: 1, paymentDate: -1 }); // reports
+paymentSchema.index({ lenderId: 1, paymentDate: -1 });            // payment history
+paymentSchema.index({ loanId: 1, paymentDate: -1 });              // per-loan lookups
+paymentSchema.index({ lenderId: 1, status: 1, paymentDate: -1 }); // reports
+paymentSchema.index({ borrowerId: 1, paymentDate: -1 });          // borrower payment history
 
 // Auto-generate reference number before saving
 paymentSchema.pre('save', function () {

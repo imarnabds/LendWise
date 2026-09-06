@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
@@ -11,7 +11,7 @@ import { apiUpdateProfile, apiChangePassword } from '../../api';
 import styles from './Settings.module.css';
 
 export const Settings: React.FC = () => {
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const { success, error } = useToast();
     const { theme, toggleTheme } = useTheme();
     const { t, i18n } = useTranslation();
@@ -23,8 +23,23 @@ export const Settings: React.FC = () => {
     const [profileData, setProfileData] = useState({
         name: user?.name || '',
         email: user?.email || '',
-        phone: user?.phone || ''
+        phone: user?.phone || '',
+        address: user?.address || ''
     });
+
+    const [emailNotifications, setEmailNotifications] = useState<boolean>(user?.emailNotifications !== false);
+
+    useEffect(() => {
+        if (user) {
+            setProfileData({
+                name: user.name || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                address: user.address || ''
+            });
+            setEmailNotifications(user.emailNotifications !== false);
+        }
+    }, [user]);
 
     const [passwordData, setPasswordData] = useState({
         currentPassword: '',
@@ -34,6 +49,7 @@ export const Settings: React.FC = () => {
 
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [isSavingPassword, setIsSavingPassword] = useState(false);
+    const [isSavingNotification, setIsSavingNotification] = useState(false);
 
     const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setProfileData({ ...profileData, [e.target.name]: e.target.value });
@@ -47,12 +63,38 @@ export const Settings: React.FC = () => {
         e.preventDefault();
         setIsSavingProfile(true);
         try {
-            await apiUpdateProfile(profileData);
+            const res = await apiUpdateProfile(profileData);
+            if (res?.user) {
+                updateUser({
+                    name: res.user.name,
+                    email: res.user.email,
+                    phone: res.user.phone,
+                    address: res.user.address,
+                    emailNotifications: res.user.emailNotifications
+                });
+            }
             success(t('settings.profileUpdated', 'Profile updated successfully.'));
         } catch (err: any) {
             error(err.message || 'Failed to update profile.');
         } finally {
             setIsSavingProfile(false);
+        }
+    };
+
+    const handleNotificationToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const nextValue = e.target.checked;
+        setIsSavingNotification(true);
+        try {
+            const res = await apiUpdateProfile({ emailNotifications: nextValue });
+            setEmailNotifications(nextValue);
+            if (res?.user) {
+                updateUser({ emailNotifications: nextValue });
+            }
+            success(`Email notifications ${nextValue ? 'enabled' : 'disabled'} successfully.`);
+        } catch (err: any) {
+            error(err.message || 'Failed to update notification preferences.');
+        } finally {
+            setIsSavingNotification(false);
         }
     };
 
@@ -106,6 +148,14 @@ export const Settings: React.FC = () => {
                             name="email"
                             type="email"
                             value={profileData.email}
+                            onChange={handleProfileChange}
+                            fullWidth
+                        />
+                        <Input
+                            label="Address"
+                            name="address"
+                            type="text"
+                            value={profileData.address}
                             onChange={handleProfileChange}
                             fullWidth
                         />
@@ -167,7 +217,12 @@ export const Settings: React.FC = () => {
                             <p className={styles.prefDesc}>{t('settings.emailNotificationsDesc')}</p>
                         </div>
                         <label className="switch">
-                            <input type="checkbox" defaultChecked />
+                            <input
+                                type="checkbox"
+                                checked={emailNotifications}
+                                onChange={handleNotificationToggle}
+                                disabled={isSavingNotification}
+                            />
                             <span className="slider round"></span>
                         </label>
                     </div>
