@@ -15,12 +15,6 @@ const redisConfig = require('./config/redis');
 
 dotenv.config();
 
-// Validate required environment variables on startup
-validateEnv();
-
-// Connect to MongoDB
-connectDB();
-
 const app = express();
 
 // ── Security Middleware ──────────────────────────────────
@@ -135,10 +129,21 @@ const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 initSocket(server);
 
-server.listen(PORT, () => {
-    logger.info(`🚀 LendWise Server running on port ${PORT} (HTTP + Socket.IO)`);
-    logger.info(`📄 Swagger docs at http://localhost:${PORT}/api-docs`);
-});
+const startServer = async () => {
+    try {
+        validateEnv();
+        await connectDB();
+        server.listen(PORT, () => {
+            logger.info(`🚀 LendWise Server running on port ${PORT} (HTTP + Socket.IO)`);
+            logger.info(`📄 Swagger docs at http://localhost:${PORT}/api-docs`);
+        });
+    } catch (error) {
+        console.error('Server startup error:', error);
+        process.exit(1);
+    }
+};
+
+startServer();
 
 // ── Graceful Shutdown Handler ─────────────────────────────
 const gracefulShutdown = (signal) => {
