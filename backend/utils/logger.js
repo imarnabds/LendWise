@@ -35,18 +35,28 @@ const logger = winston.createLogger({
     ]
 });
 
-// Console transport for non-production
-if (process.env.NODE_ENV !== 'production') {
-    logger.add(new winston.transports.Console({
-        format: winston.format.combine(
-            winston.format.colorize(),
-            winston.format.printf(({ timestamp, level, message, stack }) => {
-                return stack
-                    ? `${timestamp} ${level}: ${message}\n${stack}`
-                    : `${timestamp} ${level}: ${message}`;
-            })
-        )
-    }));
-}
+// Console transport for stdout/stderr (active in dev and production for Render log capture)
+const consoleFormat = process.env.NODE_ENV === 'production'
+    ? winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.printf(({ timestamp, level, message, stack }) => {
+            return stack
+                ? `${timestamp} [${level.toUpperCase()}]: ${message}\n${stack}`
+                : `${timestamp} [${level.toUpperCase()}]: ${message}`;
+        })
+    )
+    : winston.format.combine(
+        winston.format.colorize(),
+        winston.format.printf(({ timestamp, level, message, stack }) => {
+            return stack
+                ? `${timestamp} ${level}: ${message}\n${stack}`
+                : `${timestamp} ${level}: ${message}`;
+        })
+    );
+
+logger.add(new winston.transports.Console({
+    format: consoleFormat
+}));
+
 
 module.exports = logger;
